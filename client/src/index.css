@@ -1,0 +1,103 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-primary:   #7C6A5E;
+  --color-secondary: #B5A49A;
+  --color-accent:    #D4AF8C;
+  --color-cream:     #FAF7F4;
+  --color-soft:      #F0EAE4;
+  --color-dark:      #3D3530;
+  --color-muted:     #9E8F87;
+
+  /* Fonts */
+  --font-sans:  'Inter', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+
+  /* Shadows */
+  --shadow-card: 0 2px 20px rgba(124, 106, 94, 0.08);
+  --shadow-soft: 0 4px 40px rgba(124, 106, 94, 0.12);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-cream);
+    color: var(--color-dark);
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3 {
+    font-family: var(--font-serif);
+  }
+}
+
+@layer components {
+  .btn-primary {
+    background-color: var(--color-primary);
+    color: white;
+    padding: 0.625rem 1.5rem;
+    border-radius: 9999px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    letter-spacing: 0.025em;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: inline-block;
+  }
+  .btn-primary:hover {
+    background-color: var(--color-dark);
+  }
+
+  .btn-outline {
+    border: 1px solid var(--color-primary);
+    color: var(--color-primary);
+    padding: 0.625rem 1.5rem;
+    border-radius: 9999px;
+    font-weight: 500;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: inline-block;
+  }
+  .btn-outline:hover {
+    background-color: var(--color-primary);
+    color: white;
+  }
+
+  .card {
+    background-color: white;
+    border-radius: 1rem;
+    box-shadow: var(--shadow-card);
+    padding: 1.25rem;
+    transition: all 0.3s;
+  }
+  .card:hover {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .input {
+    width: 100%;
+    border: 1px solid var(--color-soft);
+    background-color: white;
+    border-radius: 0.75rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    transition: all 0.2s;
+    outline: none;
+  }
+  .input:focus {
+    ring: 2px solid var(--color-accent);
+    border-color: transparent;
+    box-shadow: 0 0 0 2px var(--color-accent);
+  }
+  .input::placeholder {
+    color: var(--color-muted);
+  }
+
+  .badge {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+  }
+}
