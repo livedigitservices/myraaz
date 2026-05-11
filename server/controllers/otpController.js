@@ -11,7 +11,7 @@ const sendSMS = (phone, otp) => {
   return new Promise((resolve, reject) => {
     const cleanPhone = phone.replace(/^\+91/, '').replace(/\s/g, '');
     const apiKey     = process.env.TWOFACTOR_API_KEY;
-    const path       = `/API/V1/${apiKey}/SMS/${cleanPhone}/${otp}`;
+    const path = `/API/V1/${apiKey}/SMS/${cleanPhone}/${otp}/AUTOGEN`;
 
     const options = {
       hostname: '2factor.in',

@@ -160,22 +160,6 @@ const [tempUserId, setTempUserId] = useState('');
   };
 
   /* ── Send OTP ── */
-  // const handleSendOTP = async () => {
-  //   if (!/^\d{10}$/.test(phone.replace(/\s/g, '')))
-  //     return toast.error('Enter a valid 10-digit phone number');
-  //   try {
-  //     setLoading(true);
-  //     await api.post('/auth/send-otp', { phone });
-  //     setPhoneStep('otp');
-  //     toast.success('OTP sent to your phone 📱');
-  //     startResendTimer();
-  //   } catch (err) {
-  //     toast.error(err.response?.data?.message || 'Failed to send OTP');
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // };
-
 
   const handleSendOTP = async () => {
   if (!/^\d{10}$/.test(phone.replace(/\s/g, '')))
@@ -298,20 +282,19 @@ const handleSaveDetails = async () => {
         <div className="relative z-10">
           <h2 className="text-4xl font-semibold text-white leading-snug mb-4"
               style={{ fontFamily: 'var(--font-serif)' }}>
-            Join the myRaaz family today.
+            Start your self-care journey with myRaaz.
           </h2>
           <p className="text-white/60 text-sm leading-relaxed mb-8">
-            Create your account with email or just your phone number.
-            No password needed for mobile signup!
+            Create your account with email or mobile number for a quick and secure shopping experience.
           </p>
 
           {/* Benefits */}
           {[
-            '📱 Sign up with just your phone number',
-            '🔒 Secure OTP verification',
-            '🚚 Free shipping on orders above ₹499',
-            '💛 Exclusive member discounts',
-            '📦 Track orders easily',
+          '✨ Simple and secure account setup',
+'🔒 OTP-based quick login experience',
+'🚚 Free shipping on eligible orders',
+'💛 Access exclusive deals and rewards',
+'📦 Real-time order tracking',
           ].map(text => (
             <div key={text} className="flex items-center gap-3 mb-3">
               <div className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"

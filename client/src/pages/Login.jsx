@@ -179,11 +179,10 @@ const handleSendOTP = async () => {
         <div className="relative z-10">
           <h2 className="text-4xl font-semibold text-white leading-snug mb-4"
               style={{ fontFamily: 'var(--font-serif)' }}>
-            Beautiful hair starts with the right care.
+            Premium care for your everyday beauty and wellness.
           </h2>
           <p className="text-white/70 text-sm leading-relaxed">
-            Sign in to explore our premium collection of hair oils, shampoos,
-            and treatments crafted from nature's finest ingredients.
+            Discover premium beauty, wellness, and personal care products made to elevate your lifestyle.
           </p>
 
           {/* Feature pills */}
@@ -199,25 +198,25 @@ const handleSendOTP = async () => {
           {/* Testimonial */}
           <div className="mt-8 bg-white/10 rounded-2xl p-5 backdrop-blur-sm">
             <p className="text-white/90 text-sm italic leading-relaxed">
-              "myRaaz transformed my hair. The OTP login makes it so quick and easy!"
+              “Absolutely love the quality of products from myRaaz. The shopping experience is seamless!”
             </p>
             <div className="flex items-center gap-3 mt-4">
               <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                   style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-dark)' }}>P</div>
+                   style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-dark)' }}>T</div>
               <div>
-                <p className="text-white text-xs font-medium">Priya Sharma</p>
+                <p className="text-white text-xs font-medium">Tharun Mellacheruvu</p>
                 <p className="text-white/60 text-xs">Verified Customer</p>
               </div>
             </div>
           </div>
         </div>
 
-        <p className="text-white/40 text-xs relative z-10">© 2025 myRaaz. All rights reserved.</p>
+        <p className="text-white/40 text-xs relative z-10">© {new Date().getFullYear()} myRaaz. All rights reserved.</p>
       </div>
 
       {/* ── RIGHT — form ── */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
+      <div className="w-full lg:w-1/2  flex items-center justify-center p-6">
+        <div className="w-full  max-w-md">
 
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">

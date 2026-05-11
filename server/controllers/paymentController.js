@@ -19,15 +19,33 @@ const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 // POST /api/payment/razorpay/create-order
 const createRazorpayOrder = async (req, res) => {
   try {
-    const { amount } = req.body; // amount in ₹
+    console.log('Razorpay create order request:', req.body);
+    console.log('Razorpay Key ID:', process.env.RAZORPAY_KEY_ID);
+
+    const { amount } = req.body;
+
+    if (!amount || amount <= 0)
+      return res.status(400).json({ message: 'Invalid amount' });
+
+    if (!process.env.RAZORPAY_KEY_ID || !process.env.RAZORPAY_KEY_SECRET)
+      return res.status(500).json({ message: 'Razorpay credentials not configured' });
+
+    const Razorpay = require('razorpay');
+    const razorpay = new Razorpay({
+      key_id:     process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
 
     const options = {
-      amount:   Math.round(amount * 100), // convert to paise
+      amount:   Math.round(amount * 100),
       currency: 'INR',
       receipt:  `receipt_${Date.now()}`,
     };
 
+    console.log('Creating Razorpay order with options:', options);
     const order = await razorpay.orders.create(options);
+    console.log('Razorpay order created:', order.id);
+
     res.json({
       orderId:  order.id,
       amount:   order.amount,
@@ -35,9 +53,11 @@ const createRazorpayOrder = async (req, res) => {
       keyId:    process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
+    console.error('Razorpay error:', err.message);
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // POST /api/payment/razorpay/verify
 const verifyRazorpayPayment = async (req, res) => {

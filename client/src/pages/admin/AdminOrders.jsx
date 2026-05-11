@@ -554,26 +554,68 @@ export default function AdminOrders() {
 
                       {/* Quick status update */}
                       <td className="px-5 py-3.5">
-                        <div className="relative">
-                          <select
-                            value={order.status}
-                            disabled={updating === order._id}
-                            onChange={e => handleStatusUpdate(order._id, e.target.value)}
-                            className="text-xs rounded-xl px-3 py-2 appearance-none pr-6
-                                       cursor-pointer transition-all disabled:opacity-50 border"
-                            style={{
-                              borderColor: 'var(--color-soft)',
-                              color: 'var(--color-dark)',
-                              backgroundColor: 'var(--color-cream)',
-                            }}>
-                            {['pending','processing','shipped','delivered','cancelled'].map(s => (
-                              <option key={s} value={s}>{s}</option>
-                            ))}
-                          </select>
-                          <FiChevronDown size={10}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
-                            style={{ color: 'var(--color-muted)' }} />
-                        </div>
+                       <div className="relative inline-block w-full sm:w-auto">
+
+  <select
+    value={order.status}
+    disabled={updating === order._id}
+    onChange={(e) =>
+      handleStatusUpdate(order._id, e.target.value)
+    }
+    className="
+      w-full
+      sm:w-35
+      h-10
+      px-3
+      pr-8
+      rounded-xl
+      border
+      text-xs
+      font-medium
+      appearance-none
+      outline-none
+      cursor-pointer
+      transition-all
+      disabled:opacity-50
+      truncate
+      bg-transparent
+    "
+    style={{
+      borderColor: "var(--color-soft)",
+      color: "var(--color-dark)",
+      backgroundColor: "var(--color-cream)",
+    }}
+  >
+    {[
+      "pending",
+      "processing",
+      "shipped",
+      "delivered",
+      "cancelled",
+    ].map((s) => (
+      <option
+        key={s}
+        value={s}
+        className="bg-white text-black"
+      >
+        {s}
+      </option>
+    ))}
+  </select>
+
+  <FiChevronDown
+    size={12}
+    className="
+      absolute
+      right-3
+      top-1/2
+      -translate-y-1/2
+      pointer-events-none
+    "
+    style={{ color: "var(--color-muted)" }}
+  />
+
+</div>
                       </td>
 
                       {/* View detail button */}
