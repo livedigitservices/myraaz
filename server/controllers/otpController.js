@@ -10,13 +10,15 @@ const generateToken = (id) =>
 const sendSMS = (phone, otp) => {
   return new Promise((resolve, reject) => {
     const cleanPhone = phone.replace(/^\+91/, '').replace(/\s/g, '');
-    const apiKey     = process.env.TWOFACTOR_API_KEY;
-    const path = `/API/V1/${apiKey}/SMS/${cleanPhone}/${otp}/AUTOGEN`;
+    const apiKey = process.env.TWOFACTOR_API_KEY;
+
+    // ✅ Correct path — no AUTOGEN/AUTOGEN2 at the end
+    const path = `/API/V1/${apiKey}/SMS/${cleanPhone}/${otp}`;
 
     const options = {
       hostname: '2factor.in',
       path,
-      method:  'GET',
+      method: 'POST',   // ✅ Must be POST, not GET
     };
 
     const req = https.request(options, res => {
@@ -38,7 +40,6 @@ const sendSMS = (phone, otp) => {
     req.end();
   });
 };
-
 /* ── POST /api/auth/send-otp ── */
 const sendOTP = async (req, res) => {
   const { phone } = req.body;

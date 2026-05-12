@@ -15,12 +15,17 @@ const placeOrder = async (req, res) => {
       itemsPrice, shippingPrice, totalPrice,
     });
 
-    // Clear cart after placing order
-    req.user.cart = [];
-    await req.user.save();
+    // Only clear cart if user has one and is a real Mongoose doc
+    try {
+      const User = require('../models/User');
+      await User.findByIdAndUpdate(req.user._id, { $set: { cart: [] } });
+    } catch (_) {
+      // cart clearing is non-critical, don't fail the order
+    }
 
     res.status(201).json(order);
   } catch (err) {
+    console.error('placeOrder error:', err); // ← read this in terminal
     res.status(500).json({ message: err.message });
   }
 };

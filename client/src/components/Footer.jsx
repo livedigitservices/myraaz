@@ -28,7 +28,7 @@ export default function Footer() {
       w-10 h-10 rounded-full
       flex items-center justify-center
       bg-white/10
-      hover:bg-pink-500
+      hover:bg-[#7C6A5E]
       hover:text-white
       transition-all duration-300
       hover:scale-110
@@ -47,7 +47,7 @@ export default function Footer() {
       w-10 h-10 rounded-full
       flex items-center justify-center
       bg-white/10
-      hover:bg-black
+      hover:bg-[#7C6A5E]
       hover:text-white
       transition-all duration-300
       hover:scale-110
@@ -66,7 +66,7 @@ export default function Footer() {
       w-10 h-10 rounded-full
       flex items-center justify-center
       bg-white/10
-      hover:bg-blue-600
+      hover:bg-[#7C6A5E]
       hover:text-white
       transition-all duration-300
       hover:scale-110

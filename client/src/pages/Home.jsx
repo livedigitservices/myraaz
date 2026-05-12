@@ -136,7 +136,7 @@ useEffect(() => {
   ];
 
   const perks = [
-    { icon: <FiTruck size={20} />,     title: 'Free Shipping',    desc: 'On orders above ₹499'         },
+    { icon: <FiTruck size={20} />,     title: 'Free Shipping',    desc: 'On orders above ₹999'         },
     { icon: <FiShield size={20} />,    title: '100% Natural',     desc: 'No harsh chemicals ever'      },
     { icon: <FiRefreshCw size={20} />, title: 'Easy Returns',     desc: '7-day hassle-free returns'    },
     { icon: <FiPhone size={20} />,     title: '24/7 Support',     desc: 'We\'re always here for you'   },
@@ -231,8 +231,8 @@ useEffect(() => {
             {/* Floating badges */}
             <div className="absolute top-4 right-4 bg-white rounded-2xl px-3 py-2 shadow-lg">
               <div className="flex items-center gap-1.5">
-                <Stars rating={5} />
-                <span className="text-xs font-medium" style={{ color: 'var(--color-dark)' }}>4.9</span>
+                <Stars rating={4.8} />
+                <span className="text-xs font-medium" style={{ color: 'var(--color-dark)' }}>4.8</span>
               </div>
               <p className="text-xs" style={{ color: 'var(--color-muted)' }}>2.4k reviews</p>
             </div>
@@ -425,8 +425,8 @@ useEffect(() => {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
           {[
-            { name: 'Priya S.',    initial: 'P', review: 'The argan oil completely transformed my dry, frizzy hair in just 2 weeks. I genuinely can\'t live without it now!',          rating: 5 },
-            { name: 'Ananya M.',   initial: 'A', review: 'Best shampoo I\'ve ever used. My scalp feels so clean and fresh, and my hair has never looked this shiny before.',          rating: 5 },
+            { name: 'Priya S.',    initial: 'P', review: 'The argan oil completely transformed my dry, frizzy hair in just 2 weeks. I genuinely can\'t live without it now!',          rating: 4 },
+            { name: 'Ananya M.',   initial: 'A', review: 'Best shampoo I\'ve ever used. My scalp feels so clean and fresh, and my hair has never looked this shiny before.',          rating: 4 },
             { name: 'Kavitha R.', initial: 'K', review: 'The hair mask is absolutely luxurious. My hair feels so soft and the smell is incredible. Totally worth every rupee!', rating: 5 },
           ].map(({ name, initial, review, rating }) => (
             <div key={name} className="bg-white rounded-2xl p-6"
