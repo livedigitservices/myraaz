@@ -40,14 +40,17 @@ export default function EditProduct() {
       try {
         const { data } = await api.get(`/products/${id}`);
         setForm({
-          name:        data.name,
-          description: data.description,
-          price:       data.price,
-          category:    data.category,
-          brand:       data.brand,
-          stock:       data.stock,
-          image:       null,
-        });
+  name:              data.name,
+  description:       data.description,
+  price:             data.price,
+  category:          data.category,
+  brand:             data.brand,
+  stock:             data.stock,
+  image:             null,
+  returnable:        data.returnPolicy?.returnable ?? true,
+  returnDays:        String(data.returnPolicy?.returnDays ?? 7),
+  returnDescription: data.returnPolicy?.description ?? '',
+});
         setPreview(data.image);
       } catch {
         toast.error('Failed to load product');
@@ -71,26 +74,32 @@ export default function EditProduct() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      const fd = new FormData();
-      ['name','description','price','category','brand','stock'].forEach(k =>
-        fd.append(k, form[k])
-      );
-      if (form.image) fd.append('image', form.image);
+  e.preventDefault();
+  try {
+    setLoading(true);
+    const fd = new FormData();
+    ['name','description','price','category','brand','stock'].forEach(k =>
+      fd.append(k, form[k])
+    );
 
-      await api.put(`/products/admin/${id}`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      toast.success('Product updated! ✅');
-      navigate('/admin/products');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update product');
-    } finally {
-      setLoading(false);
-    }
-  };
+    /* Return policy */
+    fd.append('returnable',        String(form.returnable));
+    fd.append('returnDays',        form.returnDays || '7');
+    fd.append('returnDescription', form.returnDescription || '');
+
+    if (form.image) fd.append('images', form.image);
+
+    await api.put(`/products/admin/${id}`, fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    toast.success('Product updated! ✅');
+    navigate('/admin/products');
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Failed to update product');
+  } finally {
+    setLoading(false);
+  }
+};
 
   if (fetching) return (
     <div className="flex items-center justify-center min-h-screen">
@@ -200,6 +209,100 @@ export default function EditProduct() {
                   className="input resize-none text-sm" />
               </div>
             </div>
+
+            {/* ── Return Policy ── */}
+<div className="col-span-2">
+  <div className="h-px mb-4" style={{ backgroundColor: 'var(--color-soft)' }} />
+  <h3 className="text-xs font-semibold uppercase tracking-widest mb-4"
+      style={{ color: 'var(--color-muted)' }}>Return Policy</h3>
+
+  {/* Returnable toggle */}
+  <label className="flex items-center justify-between p-4 rounded-xl cursor-pointer mb-3"
+         style={{ backgroundColor: 'var(--color-soft)' }}>
+    <div>
+      <p className="text-sm font-medium" style={{ color: 'var(--color-dark)' }}>
+        Returnable Product
+      </p>
+      <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+        Allow customers to request returns for this product
+      </p>
+    </div>
+    <div className="relative ml-4 shrink-0">
+      <input
+        type="checkbox"
+        name="returnable"
+        checked={form.returnable ?? true}
+        onChange={e => setForm(f => ({ ...f, returnable: e.target.checked }))}
+        className="sr-only"
+      />
+      <div className="w-11 h-6 rounded-full transition-colors cursor-pointer"
+           style={{ backgroundColor: (form.returnable ?? true)
+             ? 'var(--color-primary)' : 'var(--color-secondary)' }}
+           onClick={() => setForm(f => ({ ...f, returnable: !(f.returnable ?? true) }))}>
+        <div className="w-4 h-4 bg-white rounded-full shadow-md absolute top-1 transition-transform"
+             style={{ transform: (form.returnable ?? true)
+               ? 'translateX(24px)' : 'translateX(4px)' }} />
+      </div>
+    </div>
+  </label>
+
+  {/* Return days + description — only if returnable */}
+  {(form.returnable ?? true) && (
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <label className="block text-xs font-medium mb-1.5"
+               style={{ color: 'var(--color-dark)' }}>
+          Return Window (days)
+        </label>
+        <input
+          type="text"
+          inputMode="numeric"
+          name="returnDays"
+          value={form.returnDays ?? 7}
+          onChange={e => {
+            const val = e.target.value.replace(/[^0-9]/g, '');
+            setForm(f => ({ ...f, returnDays: val }));
+          }}
+          placeholder="7"
+          className="input text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-xs font-medium mb-1.5"
+               style={{ color: 'var(--color-dark)' }}>
+          Policy Note (shown to customer)
+        </label>
+        <input
+          type="text"
+          name="returnDescription"
+          value={form.returnDescription ?? ''}
+          onChange={e => setForm(f => ({ ...f, returnDescription: e.target.value }))}
+          placeholder="e.g. Opened items not returnable"
+          className="input text-sm"
+        />
+      </div>
+    </div>
+  )}
+
+  {/* Non-returnable reason */}
+  {!(form.returnable ?? true) && (
+    <div>
+      <label className="block text-xs font-medium mb-1.5"
+             style={{ color: 'var(--color-dark)' }}>
+        Non-returnable Reason (shown to customer)
+      </label>
+      <input
+        type="text"
+        name="returnDescription"
+        value={form.returnDescription ?? ''}
+        onChange={e => setForm(f => ({ ...f, returnDescription: e.target.value }))}
+        placeholder="e.g. Due to hygiene reasons, this product cannot be returned"
+        className="input text-sm"
+      />
+    </div>
+  )}
+</div>
+
           </div>
 
           <div className="flex items-center gap-3 pb-10">

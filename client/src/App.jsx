@@ -24,6 +24,7 @@ import EditProduct    from './pages/admin/EditProduct';
 import AdminOrders    from './pages/admin/AdminOrders';
 import AdminUsers     from './pages/admin/AdminUsers';
 import AdminCoupons from './pages/admin/AdminCoupons';
+import AdminReturns from './pages/admin/AdminReturns';
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
             <Route path="/admin/orders"             element={<AdminRoute><AdminOrders /></AdminRoute>} />
             <Route path="/admin/users"              element={<AdminRoute><AdminUsers /></AdminRoute>} />
             <Route path="/admin/coupons" element={<AdminRoute><AdminCoupons /></AdminRoute>} />
+            <Route path="/admin/returns" element={<AdminRoute><AdminReturns /></AdminRoute>} />
           </Routes>
         </main>
         <Footer />

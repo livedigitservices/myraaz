@@ -21,11 +21,18 @@ const getBannerCoupon = async (req, res) => {
 /* POST /api/coupons/validate — logged in user validates a coupon */
 const validateCoupon = async (req, res) => {
   const { code, orderAmount } = req.body;
-  try {
-    const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
 
-    if (!coupon)
+  if (!coupon)
       return res.status(404).json({ message: 'Invalid coupon code' });
+    
+  try {
+    // const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
+
+    const coupon = await Coupon.findOne({
+      code: code.trim().toUpperCase(),
+      isActive: true,
+    });
+    
 
     if (coupon.expiresAt && new Date() > coupon.expiresAt)
       return res.status(400).json({ message: 'This coupon has expired' });
@@ -38,9 +45,15 @@ const validateCoupon = async (req, res) => {
         message: `Minimum order amount of ₹${coupon.minOrder} required for this coupon`
       });
 
-    const discount = coupon.type === 'percent'
-      ? Math.round(orderAmount * coupon.value / 100)
-      : coupon.value;
+    // const discount = coupon.type === 'percent'
+    //   ? Math.round(orderAmount * coupon.value / 100)
+    //   : coupon.value;
+
+    const rawDiscount = coupon.type === 'percent'
+  ? Math.round(orderAmount * coupon.value / 100)
+  : coupon.value;
+
+const discount = Math.min(rawDiscount, orderAmount);
 
     res.json({
       valid:       true,

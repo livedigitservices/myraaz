@@ -65,6 +65,26 @@ const orderSchema = new mongoose.Schema(
 
     // Cancellation reason (optional)
     cancelReason: { type: String },
+
+    returnRequest: {
+  requested:          { type: Boolean, default: false },
+  reason:             { type: String                  },
+  requestedAt:        { type: Date                    },
+  status: {
+    type:    String,
+    enum:    ['pending', 'approved', 'rejected'],
+    default: 'pending',
+  },
+  resolvedAt:         { type: Date   },
+  adminNote:          { type: String },
+  returnableItems:    [String],
+  nonReturnableItems: [String],
+},
+coupon: {
+  code: String,
+  discountAmount: { type: Number, default: 0 },
+},
+
   },
   { timestamps: true }
 );

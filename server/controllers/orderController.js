@@ -1,10 +1,13 @@
 const Order = require('../models/Order.js');
+const Product = require('../models/Product');
+const Coupon = require('../models/Coupon');
+const User = require('../models/User');
 
 // POST /api/orders  (logged in user places order)
 const placeOrder = async (req, res) => {
   try {
     const { orderItems, shippingAddress, paymentMethod,
-            itemsPrice, shippingPrice, totalPrice } = req.body;
+            itemsPrice, shippingPrice, totalPrice, coupon } = req.body;
 
     if (!orderItems || orderItems.length === 0)
       return res.status(400).json({ message: 'No items in order' });
@@ -12,13 +15,21 @@ const placeOrder = async (req, res) => {
     const order = await Order.create({
       user: req.user._id,
       orderItems, shippingAddress, paymentMethod,
-      itemsPrice, shippingPrice, totalPrice,
+      itemsPrice, shippingPrice, totalPrice,coupon,
     });
 
     // Only clear cart if user has one and is a real Mongoose doc
     try {
-      const User = require('../models/User');
+      
       await User.findByIdAndUpdate(req.user._id, { $set: { cart: [] } });
+
+      if (coupon?.code) {
+  await Coupon.findOneAndUpdate(
+    { code: coupon.code.toUpperCase() },
+    { $inc: { usedCount: 1 } }
+  );
+}
+
     } catch (_) {
       // cart clearing is non-critical, don't fail the order
     }
@@ -70,37 +81,11 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-// GET /api/orders/admin/stats  (admin dashboard numbers)
-const getAdminStats = async (req, res) => {
-  try {
-    const totalOrders    = await Order.countDocuments();
-    const pendingOrders  = await Order.countDocuments({
-      status: { $in: ['pending', 'processing'] }
-    });
 
-    // ✅ Only count revenue from DELIVERED orders
-    const revenueResult  = await Order.aggregate([
-      { $match: { status: 'delivered' } },
-      { $group: { _id: null, total: { $sum: '$totalPrice' } } }
-    ]);
 
-    const totalProducts  = await require('../models/Product').countDocuments();
-
-    const recentOrders   = await Order.find({})
-      .populate('user', 'name email')
-      .sort({ createdAt: -1 })
-      .limit(5);
-
-    res.json({
-      totalOrders,
-      totalRevenue:  revenueResult[0]?.total || 0,
-      pendingOrders,
-      totalProducts,
-      recentOrders,
-    });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+module.exports = {
+  placeOrder, getMyOrders, getAllOrders,
+  updateOrderStatus   
 };
 
-module.exports = { placeOrder, getMyOrders, getAllOrders, updateOrderStatus, getAdminStats };
+

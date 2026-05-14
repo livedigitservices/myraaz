@@ -2,10 +2,12 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FiUpload, FiX, FiBox, FiTrendingUp,
-  FiUsers, FiShoppingCart, FiEye, FiCheck, FiImage
+  FiUsers, FiShoppingCart, FiEye, FiCheck, FiImage,
+  FiPackage
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+
 
 const SideLink = ({ to, icon, label, active }) => (
   <Link to={to}
@@ -22,14 +24,18 @@ export default function AddProduct() {
   const navigate = useNavigate();
   const [loading, setLoading]   = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  
 
   /* Multiple images — max 4 */
   const [images, setImages]     = useState([]); // { file, preview }
 
   const [form, setForm] = useState({
-    name: '', description: '', price: '',
-    category: '', brand: '', stock: '',
-  });
+  name: '', description: '', price: '',
+  category: '', brand: '', stock: '',
+  returnable:        true,
+  returnDays:        '7',
+  returnDescription: '',
+});
 
   const categories = [
     { value: 'hair-oil',    label: '🌿 Hair Oil'    },
@@ -74,34 +80,46 @@ export default function AddProduct() {
     handleImages(e.dataTransfer.files);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const { name, description, price, category, brand, stock } = form;
-    if (!name || !description || !price || !category || !brand || !stock)
-      return toast.error('Please fill in all fields');
-    if (images.length === 0)
-      return toast.error('Please upload at least one image');
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  const { name, description, price, category, brand, stock } = form;
+  if (!name || !description || !price || !category || !brand || !stock)
+    return toast.error('Please fill in all fields');
+  if (images.length === 0)
+    return toast.error('Please upload at least one image');
 
-    try {
-      setLoading(true);
-      const fd = new FormData();
-      Object.entries({ name, description, price, category, brand, stock })
-        .forEach(([k, v]) => fd.append(k, v));
-      images.forEach(img => fd.append('images', img.file));
+  try {
+    setLoading(true);
+    const fd = new FormData();
 
-      await api.post('/products/admin', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+    /* Basic fields */
+    fd.append('name',        name);
+    fd.append('description', description);
+    fd.append('price',       price);
+    fd.append('category',    category);
+    fd.append('brand',       brand);
+    fd.append('stock',       stock);
 
-      toast.success('Product added successfully! 🌿');
-      navigate('/admin/products');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to add product');
-    } finally {
-      setLoading(false);
-    }
-  };
+    /* Return policy */
+    fd.append('returnable',        String(form.returnable));
+    fd.append('returnDays',        form.returnDays || '7');
+    fd.append('returnDescription', form.returnDescription || '');
 
+    /* Images */
+    images.forEach(img => fd.append('images', img.file));
+
+    await api.post('/products/admin', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    toast.success('Product added! 🌿');
+    navigate('/admin/products');
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Failed to add product');
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-cream)' }}>
 
@@ -119,6 +137,8 @@ export default function AddProduct() {
         <SideLink to="/admin/products" icon={<FiBox size={16} />}          label="Products" active  />
         <SideLink to="/admin/orders"   icon={<FiShoppingCart size={16} />} label="Orders"           />
         <SideLink to="/admin/users"    icon={<FiUsers size={16} />}        label="Users"            />
+        <SideLink to="/admin/returns" icon={<FiPackage size={16} />} label="Returns" />
+
         <div className="mt-auto px-4">
           <Link to="/" className="flex items-center gap-2 text-xs"
                 style={{ color: 'var(--color-muted)' }}>
@@ -316,6 +336,90 @@ export default function AddProduct() {
                   className="input resize-none text-sm" />
               </div>
             </div>
+
+
+{/* ── RETURN POLICY ── */}
+<div className="col-span-2 pt-2">
+  <div className="h-px mb-4" style={{ backgroundColor: 'var(--color-soft)' }} />
+  <p className="text-xs font-semibold uppercase tracking-widest mb-3"
+     style={{ color: 'var(--color-muted)' }}>Return Policy</p>
+
+  {/* Toggle */}
+  <label className="flex items-center justify-between p-4 rounded-xl cursor-pointer mb-3"
+         style={{ backgroundColor: 'var(--color-soft)' }}>
+    <div>
+      <p className="text-sm font-medium" style={{ color: 'var(--color-dark)' }}>
+        Allow Returns
+      </p>
+      <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+        Customers can request a return for this product
+      </p>
+    </div>
+    <div className="relative ml-4 shrink-0 cursor-pointer"
+         onClick={() => setForm(f => ({ ...f, returnable: !f.returnable }))}>
+      <div className="w-11 h-6 rounded-full transition-all duration-200"
+           style={{ backgroundColor: form.returnable
+             ? 'var(--color-primary)' : 'var(--color-secondary)' }}>
+        <div className="w-4 h-4 bg-white rounded-full shadow absolute top-1 transition-all"
+             style={{ transform: form.returnable
+               ? 'translateX(24px)' : 'translateX(4px)' }} />
+      </div>
+    </div>
+  </label>
+
+  {/* If returnable — show days + note */}
+  {form.returnable && (
+    <div className="grid grid-cols-2 gap-4">
+      <div>
+        <label className="block text-xs font-medium mb-1.5"
+               style={{ color: 'var(--color-dark)' }}>
+          Return Window (days)
+        </label>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={form.returnDays}
+          onChange={e => setForm(f => ({
+            ...f,
+            returnDays: e.target.value.replace(/[^0-9]/g, '')
+          }))}
+          placeholder="7"
+          className="input text-sm"
+        />
+      </div>
+      <div>
+        <label className="block text-xs font-medium mb-1.5"
+               style={{ color: 'var(--color-dark)' }}>
+          Return Note (optional)
+        </label>
+        <input
+          type="text"
+          value={form.returnDescription}
+          onChange={e => setForm(f => ({ ...f, returnDescription: e.target.value }))}
+          placeholder="e.g. Seal must be intact"
+          className="input text-sm"
+        />
+      </div>
+    </div>
+  )}
+
+  {/* If NOT returnable — show reason */}
+  {!form.returnable && (
+    <div>
+      <label className="block text-xs font-medium mb-1.5"
+             style={{ color: 'var(--color-dark)' }}>
+        Non-returnable Reason (shown to customer)
+      </label>
+      <input
+        type="text"
+        value={form.returnDescription}
+        onChange={e => setForm(f => ({ ...f, returnDescription: e.target.value }))}
+        placeholder="e.g. Due to hygiene reasons, this product cannot be returned"
+        className="input text-sm"
+      />
+    </div>
+  )}
+</div>
           </div>
 
           {/* Live preview */}

@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import {
   FiPackage, FiUsers, FiShoppingCart, FiTrendingUp,
   FiPlus, FiEye, FiClock, FiCheckCircle, FiTruck,
-  FiXCircle, FiArrowRight, FiBox, FiAlertCircle
+  FiXCircle, FiArrowRight, FiBox, FiAlertCircle,FiTag
 } from 'react-icons/fi';
 import api from '../../services/api';
-import { FiTag } from 'react-icons/fi';
+
 
 /* ── Status badge ── */
 const StatusBadge = ({ status }) => {
@@ -122,6 +122,8 @@ export default function AdminDashboard() {
         <SideLink to="/admin/orders"    icon={<FiShoppingCart size={16} />} label="Orders" />
         <SideLink to="/admin/users"     icon={<FiUsers size={16} />}     label="Users"     />
         <SideLink to="/admin/coupons" icon={<FiTag size={16} />} label="Coupons" />
+        <SideLink to="/admin/returns" icon={<FiPackage size={16} />} label="Returns" />
+
 
         <div className="mt-auto px-4">
           <Link to="/"

@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   FiStar, FiShoppingCart, FiHeart, FiArrowLeft,
   FiTruck, FiShield, FiRefreshCw, FiMinus, FiPlus,
-  FiShare2, FiCheck, FiUser
+  FiShare2, FiCheck, FiUser, FiPackage, FiX
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../services/api';
@@ -29,10 +29,11 @@ const Stars = ({ rating, size = 14, interactive = false, onRate }) => (
 const Skeleton = () => (
   <div className="max-w-6xl mx-auto px-4 py-10 animate-pulse">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-      <div className="aspect-square rounded-3xl" style={{ backgroundColor: 'var(--color-soft)' }} />
+      <div className="aspect-square rounded-3xl"
+           style={{ backgroundColor: 'var(--color-soft)' }} />
       <div className="space-y-4 pt-4">
         {[80, 60, 40, 40, 100, 60].map((w, i) => (
-          <div key={i} className={`h-4 rounded-full w-${w === 100 ? 'full' : `[${w}%]`}`}
+          <div key={i} className="h-4 rounded-full"
                style={{ backgroundColor: 'var(--color-soft)', width: `${w}%` }} />
         ))}
       </div>
@@ -40,36 +41,63 @@ const Skeleton = () => (
   </div>
 );
 
+/* ── Return Policy Badge ── */
+const ReturnPolicyBadge = ({ returnPolicy }) => {
+  if (!returnPolicy) return null;
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      {returnPolicy.returnable ? (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5
+                         rounded-full text-xs font-medium"
+              style={{ backgroundColor: '#F0FDF4', color: '#059669' }}>
+          <FiRefreshCw size={11} />
+          {returnPolicy.returnDays || 7}-day return policy
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5
+                         rounded-full text-xs font-medium"
+              style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>
+          <FiX size={11} />
+          Non-returnable
+        </span>
+      )}
+      {returnPolicy.description && (
+        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+          · {returnPolicy.description}
+        </span>
+      )}
+    </div>
+  );
+};
+
 export default function ProductDetail() {
   const { id }       = useParams();
   const navigate     = useNavigate();
   const { userInfo } = useAuth();
-  const { addToCart }                               = useCart();
+  const { addToCart }   = useCart();
   const { addToWishlist, removeFromWishlist, isWishlisted } = useWishlist();
 
-  const [product, setProduct]   = useState(null);
-  const [related, setRelated]   = useState([]);
-  const [loading, setLoading]   = useState(true);
-  const [quantity, setQuantity] = useState(1);
-  const [added, setAdded]       = useState(false);
+  const [product, setProduct]     = useState(null);
+  const [related, setRelated]     = useState([]);
+  const [loading, setLoading]     = useState(true);
+  const [quantity, setQuantity]   = useState(1);
+  const [added, setAdded]         = useState(false);
   const [activeImage, setActiveImage] = useState(0);
-  const [activeTab, setActiveTab] = useState('description'); // description | reviews | how-to
+  const [activeTab, setActiveTab] = useState('description');
 
-  /* Review form */
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const [submitting, setSubmitting] = useState(false);
 
-  /* Fetch product */
   useEffect(() => {
-    const fetch = async () => {
+    const fetchProduct = async () => {
       setLoading(true);
       try {
         const { data } = await api.get(`/products/${id}`);
         setProduct(data);
-        /* Fetch related — same category */
+        setActiveImage(0);
         const rel = await api.get(`/products?category=${data.category}&limit=4`);
         setRelated(rel.data.products.filter(p => p._id !== id));
-         setActiveImage(0);
       } catch {
         toast.error('Product not found');
         navigate('/products');
@@ -77,11 +105,10 @@ export default function ProductDetail() {
         setLoading(false);
       }
     };
-    fetch();
+    fetchProduct();
     window.scrollTo(0, 0);
   }, [id]);
 
-  /* Add to cart with animation */
   const handleAddToCart = () => {
     addToCart(product, quantity);
     setAdded(true);
@@ -89,24 +116,21 @@ export default function ProductDetail() {
     setTimeout(() => setAdded(false), 2000);
   };
 
-  /* Wishlist */
   const wishlisted = product ? isWishlisted(product._id) : false;
   const handleWishlist = () => {
     if (wishlisted) { removeFromWishlist(product._id); toast.info('Removed from wishlist'); }
     else            { addToWishlist(product);           toast.success('Added to wishlist 💛'); }
   };
 
-  /* Submit review */
   const handleReview = async (e) => {
     e.preventDefault();
-    if (!userInfo) return toast.error('Please login to leave a review');
+    if (!userInfo)               return toast.error('Please login to leave a review');
     if (!reviewForm.comment.trim()) return toast.error('Please write a comment');
     try {
       setSubmitting(true);
       await api.post(`/products/${id}/reviews`, reviewForm);
       toast.success('Review submitted! 🌟');
       setReviewForm({ rating: 5, comment: '' });
-      /* Refresh product */
       const { data } = await api.get(`/products/${id}`);
       setProduct(data);
     } catch (err) {
@@ -116,21 +140,21 @@ export default function ProductDetail() {
     }
   };
 
-  /* Share */
   const handleShare = () => {
     navigator.clipboard.writeText(window.location.href);
-    toast.success('Link copied to clipboard!');
+    toast.success('Link copied!');
   };
 
   if (loading) return <Skeleton />;
   if (!product) return null;
 
-  const inStock      = product.stock > 0;
+  const inStock         = product.stock > 0;
   const ratingBreakdown = [5,4,3,2,1].map(star => ({
     star,
     count: product.reviews?.filter(r => Math.round(r.rating) === star).length || 0,
     pct:   product.numReviews
-      ? Math.round((product.reviews?.filter(r => Math.round(r.rating) === star).length / product.numReviews) * 100)
+      ? Math.round((product.reviews?.filter(r => Math.round(r.rating) === star).length
+          / product.numReviews) * 100)
       : 0,
   }));
 
@@ -138,143 +162,180 @@ export default function ProductDetail() {
     <div style={{ backgroundColor: 'var(--color-cream)' }}>
       <div className="max-w-6xl mx-auto px-4 py-8">
 
-        {/* ── BREADCRUMB ── */}
-        <div className="flex items-center gap-2 text-xs mb-8" style={{ color: 'var(--color-muted)' }}>
-          <Link to="/" className="hover:underline">Home</Link>
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-xs mb-8 flex-wrap"
+             style={{ color: 'var(--color-muted)' }}>
+          <Link to="/"        className="hover:underline">Home</Link>
           <span>/</span>
           <Link to="/products" className="hover:underline">Products</Link>
           <span>/</span>
           <Link to={`/products?category=${product.category}`}
                 className="hover:underline capitalize">{product.category}</Link>
           <span>/</span>
-          <span className="line-clamp-1" style={{ color: 'var(--color-dark)' }}>{product.name}</span>
+          <span className="line-clamp-1"
+                style={{ color: 'var(--color-dark)' }}>{product.name}</span>
         </div>
 
-        {/* ── MAIN SECTION ── */}
+        {/* Main Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 mb-16">
 
           {/* LEFT — Images */}
-<div className="space-y-3">
+          <div className="space-y-3">
 
-  {/* Main image */}
-  <div className="relative rounded-3xl overflow-hidden aspect-square group"
-       style={{ backgroundColor: 'var(--color-soft)' }}>
-    <img
-      src={product.images?.[activeImage] || product.image}
-      alt={product.name}
-      className="w-full h-full object-cover transition-transform duration-700
-                 group-hover:scale-105"
-    />
-    {/* Badges */}
-    <div className="absolute top-4 left-4 flex flex-col gap-2">
-      <span className="px-3 py-1.5 rounded-full text-xs font-medium capitalize text-white"
-            style={{ backgroundColor: 'var(--color-primary)' }}>
-        {product.category}
-      </span>
-      {!inStock && (
-        <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-red-500 text-white">
-          Out of Stock
-        </span>
-      )}
-    </div>
-    {/* Share */}
-    <button onClick={handleShare}
-      className="absolute top-4 right-4 w-9 h-9 bg-white rounded-full flex items-center
-                 justify-center shadow-md hover:scale-110 transition-transform">
-      <FiShare2 size={15} style={{ color: 'var(--color-muted)' }} />
-    </button>
+            {/* Main image */}
+            <div className="relative rounded-3xl overflow-hidden aspect-square group"
+                 style={{ backgroundColor: 'var(--color-soft)' }}>
+              <img
+                src={product.images?.[activeImage] || product.image}
+                alt={product.name}
+                className="w-full h-full object-cover transition-transform
+                           duration-700 group-hover:scale-105"
+              />
 
-    {/* Arrow nav — only if multiple images */}
-    {product.images?.length > 1 && (
-      <>
-        <button
-          onClick={() => setActiveImage(i => (i - 1 + product.images.length) % product.images.length)}
-          className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/80
-                     rounded-full flex items-center justify-center shadow-md
-                     hover:bg-white transition-all">
-          ‹
-        </button>
-        <button
-          onClick={() => setActiveImage(i => (i + 1) % product.images.length)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/80
-                     rounded-full flex items-center justify-center shadow-md
-                     hover:bg-white transition-all">
-          ›
-        </button>
-      </>
-    )}
-  </div>
+              {/* Top left badges */}
+              <div className="absolute top-4 left-4 flex flex-col gap-2">
+                <span className="px-3 py-1.5 rounded-full text-xs font-medium
+                                 capitalize text-white"
+                      style={{ backgroundColor: 'var(--color-primary)' }}>
+                  {product.category}
+                </span>
+                {!inStock && (
+                  <span className="px-3 py-1.5 rounded-full text-xs font-medium
+                                   bg-red-500 text-white">
+                    Out of Stock
+                  </span>
+                )}
+              </div>
 
-  {/* Thumbnails — only shown if more than 1 image */}
-  {product.images?.length > 1 && (
-    <div className="flex gap-2">
-      {product.images.map((img, i) => (
-        <button key={i} onClick={() => setActiveImage(i)}
-          className="flex-1 aspect-square rounded-xl overflow-hidden transition-all"
-          style={{
-            border: activeImage === i
-              ? '2px solid var(--color-primary)'
-              : '2px solid transparent',
-            backgroundColor: 'var(--color-soft)',
-          }}>
-          <img src={img} alt={`View ${i + 1}`}
-               className="w-full h-full object-cover" />
-        </button>
-      ))}
-    </div>
-  )}
+              {/* Share button */}
+              <button onClick={handleShare}
+                className="absolute top-4 right-4 w-9 h-9 bg-white rounded-full
+                           flex items-center justify-center shadow-md
+                           hover:scale-110 transition-transform">
+                <FiShare2 size={15} style={{ color: 'var(--color-muted)' }} />
+              </button>
 
-  {/* Perks below image */}
-  <div className="grid grid-cols-3 gap-3">
-    {[
-      { icon: <FiTruck size={15} />,     text: 'Free shipping ₹499+' },
-      { icon: <FiShield size={15} />,    text: '100% authentic'      },
-      { icon: <FiRefreshCw size={15} />, text: '7-day returns'       },
-    ].map(({ icon, text }) => (
-      <div key={text}
-           className="flex flex-col items-center gap-1.5 p-3 rounded-2xl text-center bg-white"
-           style={{ boxShadow: 'var(--shadow-card)' }}>
-        <span style={{ color: 'var(--color-primary)' }}>{icon}</span>
-        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{text}</p>
-      </div>
-    ))}
-  </div>
-</div>
+              {/* Arrow navigation */}
+              {product.images?.length > 1 && (
+                <>
+                  <button
+                    onClick={() => setActiveImage(i =>
+                      (i - 1 + product.images.length) % product.images.length
+                    )}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8
+                               bg-white/80 rounded-full flex items-center justify-center
+                               shadow-md hover:bg-white transition-all text-lg font-bold"
+                    style={{ color: 'var(--color-dark)' }}>
+                    ‹
+                  </button>
+                  <button
+                    onClick={() => setActiveImage(i =>
+                      (i + 1) % product.images.length
+                    )}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8
+                               bg-white/80 rounded-full flex items-center justify-center
+                               shadow-md hover:bg-white transition-all text-lg font-bold"
+                    style={{ color: 'var(--color-dark)' }}>
+                    ›
+                  </button>
+                </>
+              )}
+
+              {/* Image counter */}
+              {product.images?.length > 1 && (
+                <div className="absolute bottom-4 right-4 bg-black/40 text-white text-xs
+                                px-2.5 py-1 rounded-full">
+                  {activeImage + 1} / {product.images.length}
+                </div>
+              )}
+            </div>
+
+            {/* Thumbnails */}
+            {product.images?.length > 1 && (
+              <div className="flex gap-2">
+                {product.images.map((img, i) => (
+                  <button key={i} onClick={() => setActiveImage(i)}
+                    className="flex-1 aspect-square rounded-xl overflow-hidden
+                               transition-all"
+                    style={{
+                      border: activeImage === i
+                        ? '2.5px solid var(--color-primary)'
+                        : '2.5px solid transparent',
+                      backgroundColor: 'var(--color-soft)',
+                      opacity: activeImage === i ? 1 : 0.7,
+                    }}>
+                    <img src={img} alt={`View ${i + 1}`}
+                         className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Perks */}
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { icon: <FiTruck size={15} />,     text: 'Free ₹999+' },
+                { icon: <FiShield size={15} />,    text: 'Authentic'   },
+                {
+                  icon: product.returnPolicy?.returnable
+                    ? <FiRefreshCw size={15} />
+                    : <FiX size={15} />,
+                  text: product.returnPolicy?.returnable
+                    ? `${product.returnPolicy.returnDays || 7}-day return`
+                    : 'No returns',
+                },
+              ].map(({ icon, text }) => (
+                <div key={text}
+                     className="flex flex-col items-center gap-1.5 p-3 rounded-2xl
+                                text-center bg-white"
+                     style={{ boxShadow: 'var(--shadow-card)' }}>
+                  <span style={{ color: 'var(--color-primary)' }}>{icon}</span>
+                  <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
 
           {/* RIGHT — Details */}
           <div className="flex flex-col gap-5 pt-2">
 
-            {/* Brand + name */}
-            <div>
-              <p className="text-xs font-medium uppercase tracking-widest mb-2"
-                 style={{ color: 'var(--color-accent)' }}>{product.brand}</p>
-              <h1 className="text-3xl font-semibold leading-snug mb-3"
-                  style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
-                {product.name}
-              </h1>
+            {/* Brand */}
+            <p className="text-xs font-medium uppercase tracking-widest"
+               style={{ color: 'var(--color-accent)' }}>
+              {product.brand}
+            </p>
 
-              {/* Rating row */}
-              <div className="flex items-center gap-3">
-                <Stars rating={product.rating} size={16} />
-                <span className="text-sm font-medium" style={{ color: 'var(--color-dark)' }}>
-                  {product.rating?.toFixed(1)}
-                </span>
-                <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                  ({product.numReviews} {product.numReviews === 1 ? 'review' : 'reviews'})
-                </span>
-              </div>
+            {/* Name */}
+            <h1 className="text-3xl font-semibold leading-snug"
+                style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
+              {product.name}
+            </h1>
+
+            {/* Rating */}
+            <div className="flex items-center gap-3">
+              <Stars rating={product.rating} size={16} />
+              <span className="text-sm font-medium"
+                    style={{ color: 'var(--color-dark)' }}>
+                {product.rating?.toFixed(1)}
+              </span>
+              <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                ({product.numReviews} {product.numReviews === 1 ? 'review' : 'reviews'})
+              </span>
             </div>
 
             {/* Price */}
             <div className="flex items-baseline gap-3">
               <span className="text-4xl font-semibold"
-                    style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-primary)' }}>
+                    style={{ fontFamily: 'var(--font-serif)',
+                             color: 'var(--color-primary)' }}>
                 ₹{product.price}
               </span>
-              <span className="text-sm line-through" style={{ color: 'var(--color-muted)' }}>
+              <span className="text-sm line-through"
+                    style={{ color: 'var(--color-muted)' }}>
                 ₹{Math.round(product.price * 1.2)}
               </span>
-              <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-600">
+              <span className="text-xs font-medium px-2 py-1 rounded-full
+                               bg-green-100 text-green-600">
                 20% off
               </span>
             </div>
@@ -288,12 +349,15 @@ export default function ProductDetail() {
               </span>
             </div>
 
+            {/* ── RETURN POLICY BADGE — dynamic ── */}
+            <ReturnPolicyBadge returnPolicy={product.returnPolicy} />
+
             {/* Short description */}
             <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-              {product.description?.slice(0, 180)}{product.description?.length > 180 ? '...' : ''}
+              {product.description?.slice(0, 180)}
+              {product.description?.length > 180 ? '...' : ''}
             </p>
 
-            {/* Divider */}
             <div className="h-px" style={{ backgroundColor: 'var(--color-soft)' }} />
 
             {/* Quantity */}
@@ -304,7 +368,8 @@ export default function ProductDetail() {
                 <div className="flex items-center rounded-full overflow-hidden"
                      style={{ border: '1.5px solid var(--color-soft)' }}>
                   <button onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                    className="w-10 h-10 flex items-center justify-center transition-colors hover:bg-soft"
+                    className="w-10 h-10 flex items-center justify-center
+                               transition-colors hover:bg-soft"
                     style={{ color: 'var(--color-dark)' }}>
                     <FiMinus size={14} />
                   </button>
@@ -312,7 +377,8 @@ export default function ProductDetail() {
                         style={{ color: 'var(--color-dark)' }}>
                     {quantity}
                   </span>
-                  <button onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
+                  <button onClick={() => setQuantity(q =>
+                    Math.min(product.stock, q + 1))}
                     className="w-10 h-10 flex items-center justify-center transition-colors"
                     style={{ color: 'var(--color-dark)' }}>
                     <FiPlus size={14} />
@@ -329,9 +395,9 @@ export default function ProductDetail() {
               <button
                 onClick={handleAddToCart}
                 disabled={!inStock}
-                className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full
-                           text-sm font-medium text-white transition-all duration-300
-                           disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 flex items-center justify-center gap-2 py-3.5
+                           rounded-full text-sm font-medium text-white transition-all
+                           duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
                 style={{ backgroundColor: added ? '#22c55e' : 'var(--color-primary)' }}>
                 {added
                   ? <><FiCheck size={16} /> Added!</>
@@ -343,7 +409,9 @@ export default function ProductDetail() {
                            transition-all duration-200 hover:scale-110 shrink-0"
                 style={{
                   backgroundColor: wishlisted ? '#FEF3E2' : 'var(--color-soft)',
-                  border: wishlisted ? '1.5px solid var(--color-accent)' : '1.5px solid var(--color-soft)',
+                  border: wishlisted
+                    ? '1.5px solid var(--color-accent)'
+                    : '1.5px solid var(--color-soft)',
                 }}>
                 <FiHeart size={18}
                   fill={wishlisted ? 'var(--color-accent)' : 'none'}
@@ -355,8 +423,8 @@ export default function ProductDetail() {
             <button
               onClick={() => { handleAddToCart(); navigate('/cart'); }}
               disabled={!inStock}
-              className="w-full py-3.5 rounded-full text-sm font-medium transition-all
-                         disabled:opacity-40"
+              className="w-full py-3.5 rounded-full text-sm font-medium
+                         transition-all disabled:opacity-40"
               style={{
                 border: '1.5px solid var(--color-primary)',
                 color: 'var(--color-primary)',
@@ -367,17 +435,19 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        {/* ── TABS ── */}
+        {/* Tabs */}
         <div className="mb-10">
-          <div className="flex gap-1 p-1 rounded-2xl w-fit mb-8"
+          <div className="flex gap-1 p-1 rounded-2xl w-fit mb-8 overflow-x-auto"
                style={{ backgroundColor: 'var(--color-soft)' }}>
             {[
-              { key: 'description', label: 'Description'   },
+              { key: 'description', label: 'Description' },
               { key: 'reviews',     label: `Reviews (${product.numReviews})` },
-              { key: 'how-to',      label: 'How to Use'    },
+              { key: 'how-to',      label: 'How to Use'  },
+              { key: 'return',      label: 'Return Policy' },
             ].map(({ key, label }) => (
               <button key={key} onClick={() => setActiveTab(key)}
-                className="px-5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium
+                           transition-all duration-200 whitespace-nowrap"
                 style={{
                   backgroundColor: activeTab === key ? 'white' : 'transparent',
                   color: activeTab === key ? 'var(--color-primary)' : 'var(--color-muted)',
@@ -388,26 +458,30 @@ export default function ProductDetail() {
             ))}
           </div>
 
-          {/* Description tab */}
+          {/* Description Tab */}
           {activeTab === 'description' && (
-            <div className="bg-white rounded-2xl p-6" style={{ boxShadow: 'var(--shadow-card)' }}>
+            <div className="bg-white rounded-2xl p-6"
+                 style={{ boxShadow: 'var(--shadow-card)' }}>
               <h3 className="text-lg font-semibold mb-4"
                   style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
                 About this product
               </h3>
-              <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--color-muted)' }}>
+              <p className="text-sm leading-relaxed mb-6"
+                 style={{ color: 'var(--color-muted)' }}>
                 {product.description}
               </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {[
-                  { label: 'Brand',    value: product.brand    },
+                  { label: 'Brand',    value: product.brand },
                   { label: 'Category', value: product.category },
                   { label: 'Stock',    value: `${product.stock} units` },
                   { label: 'Rating',   value: `${product.rating?.toFixed(1)} / 5` },
                 ].map(({ label, value }) => (
                   <div key={label} className="p-3 rounded-xl text-center"
                        style={{ backgroundColor: 'var(--color-soft)' }}>
-                    <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>{label}</p>
+                    <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
+                      {label}
+                    </p>
                     <p className="text-sm font-semibold capitalize"
                        style={{ color: 'var(--color-dark)' }}>{value}</p>
                   </div>
@@ -416,18 +490,16 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* Reviews tab */}
+          {/* Reviews Tab */}
           {activeTab === 'reviews' && (
             <div className="space-y-5">
-
-              {/* Rating summary */}
-              <div className="bg-white rounded-2xl p-6" style={{ boxShadow: 'var(--shadow-card)' }}>
+              <div className="bg-white rounded-2xl p-6"
+                   style={{ boxShadow: 'var(--shadow-card)' }}>
                 <div className="flex flex-col md:flex-row gap-8 items-start">
-
-                  {/* Overall */}
                   <div className="text-center shrink-0">
                     <p className="text-6xl font-semibold mb-2"
-                       style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-primary)' }}>
+                       style={{ fontFamily: 'var(--font-serif)',
+                                color: 'var(--color-primary)' }}>
                       {product.rating?.toFixed(1)}
                     </p>
                     <Stars rating={product.rating} size={18} />
@@ -435,18 +507,18 @@ export default function ProductDetail() {
                       {product.numReviews} reviews
                     </p>
                   </div>
-
-                  {/* Breakdown bars */}
                   <div className="flex-1 space-y-2 w-full">
                     {ratingBreakdown.map(({ star, count, pct }) => (
                       <div key={star} className="flex items-center gap-3">
                         <span className="text-xs w-3 shrink-0"
                               style={{ color: 'var(--color-muted)' }}>{star}</span>
-                        <FiStar size={11} fill="var(--color-accent)" color="var(--color-accent)" />
+                        <FiStar size={11} fill="var(--color-accent)"
+                                color="var(--color-accent)" />
                         <div className="flex-1 h-2 rounded-full overflow-hidden"
                              style={{ backgroundColor: 'var(--color-soft)' }}>
                           <div className="h-full rounded-full transition-all duration-500"
-                               style={{ width: `${pct}%`, backgroundColor: 'var(--color-accent)' }} />
+                               style={{ width: `${pct}%`,
+                                        backgroundColor: 'var(--color-accent)' }} />
                         </div>
                         <span className="text-xs w-6 shrink-0"
                               style={{ color: 'var(--color-muted)' }}>{count}</span>
@@ -456,34 +528,31 @@ export default function ProductDetail() {
                 </div>
               </div>
 
-              {/* Write review */}
               {userInfo ? (
-                <div className="bg-white rounded-2xl p-6" style={{ boxShadow: 'var(--shadow-card)' }}>
+                <div className="bg-white rounded-2xl p-6"
+                     style={{ boxShadow: 'var(--shadow-card)' }}>
                   <h4 className="text-base font-semibold mb-4"
                       style={{ color: 'var(--color-dark)' }}>Write a Review</h4>
                   <form onSubmit={handleReview} className="space-y-4">
                     <div>
-                      <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-muted)' }}>
-                        Your rating
-                      </p>
+                      <p className="text-xs font-medium mb-2"
+                         style={{ color: 'var(--color-muted)' }}>Your rating</p>
                       <Stars rating={reviewForm.rating} size={24} interactive
                              onRate={r => setReviewForm(f => ({ ...f, rating: r }))} />
                     </div>
                     <div>
-                      <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-muted)' }}>
-                        Your comment
-                      </p>
-                      <textarea
-                        rows={3}
-                        value={reviewForm.comment}
-                        onChange={e => setReviewForm(f => ({ ...f, comment: e.target.value }))}
-                        placeholder="Share your experience with this product..."
-                        className="input resize-none"
-                      />
+                      <p className="text-xs font-medium mb-2"
+                         style={{ color: 'var(--color-muted)' }}>Your comment</p>
+                      <textarea rows={3} value={reviewForm.comment}
+                        onChange={e => setReviewForm(f => ({
+                          ...f, comment: e.target.value
+                        }))}
+                        placeholder="Share your experience..."
+                        className="input resize-none" />
                     </div>
                     <button type="submit" disabled={submitting}
-                      className="px-6 py-2.5 rounded-full text-sm font-medium text-white
-                                 disabled:opacity-60 transition-all"
+                      className="px-6 py-2.5 rounded-full text-sm font-medium
+                                 text-white disabled:opacity-60 transition-all"
                       style={{ backgroundColor: 'var(--color-primary)' }}>
                       {submitting ? 'Submitting...' : 'Submit Review'}
                     </button>
@@ -499,7 +568,6 @@ export default function ProductDetail() {
                 </div>
               )}
 
-              {/* Review list */}
               {product.reviews?.length === 0 ? (
                 <div className="bg-white rounded-2xl p-10 text-center"
                      style={{ boxShadow: 'var(--shadow-card)' }}>
@@ -515,13 +583,14 @@ export default function ProductDetail() {
                          style={{ boxShadow: 'var(--shadow-card)' }}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center
-                                          text-sm font-bold text-white shrink-0"
+                          <div className="w-9 h-9 rounded-full flex items-center
+                                          justify-center text-sm font-bold text-white shrink-0"
                                style={{ backgroundColor: 'var(--color-primary)' }}>
                             {review.name?.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <p className="text-sm font-medium" style={{ color: 'var(--color-dark)' }}>
+                            <p className="text-sm font-medium"
+                               style={{ color: 'var(--color-dark)' }}>
                               {review.name}
                             </p>
                             <Stars rating={review.rating} size={12} />
@@ -533,7 +602,8 @@ export default function ProductDetail() {
                           })}
                         </span>
                       </div>
-                      <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
+                      <p className="text-sm leading-relaxed"
+                         style={{ color: 'var(--color-muted)' }}>
                         {review.comment}
                       </p>
                     </div>
@@ -543,20 +613,26 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* How to use tab */}
+          {/* How to Use Tab */}
           {activeTab === 'how-to' && (
-            <div className="bg-white rounded-2xl p-6" style={{ boxShadow: 'var(--shadow-card)' }}>
+            <div className="bg-white rounded-2xl p-6"
+                 style={{ boxShadow: 'var(--shadow-card)' }}>
               <h3 className="text-lg font-semibold mb-6"
                   style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
                 How to Use
               </h3>
               <div className="space-y-5">
                 {[
-                  { step: '01', title: 'Prepare',  desc: 'Start with clean, slightly damp hair for best absorption and results.' },
-                  { step: '02', title: 'Apply',    desc: 'Take a small amount and distribute evenly through your hair, focusing on the ends.' },
-                  { step: '03', title: 'Massage',  desc: 'Gently massage into scalp using circular motions to boost circulation.' },
-                  { step: '04', title: 'Wait',     desc: 'Leave on for at least 30 minutes, or overnight for a deep conditioning treatment.' },
-                  { step: '05', title: 'Rinse',    desc: 'Wash off thoroughly with a gentle shampoo and lukewarm water.' },
+                  { step: '01', title: 'Prepare',
+                    desc: 'Start with clean, slightly damp hair for best absorption.' },
+                  { step: '02', title: 'Apply',
+                    desc: 'Take a small amount and distribute evenly, focusing on ends.' },
+                  { step: '03', title: 'Massage',
+                    desc: 'Gently massage into scalp using circular motions.' },
+                  { step: '04', title: 'Wait',
+                    desc: 'Leave on for 30 minutes, or overnight for deep conditioning.' },
+                  { step: '05', title: 'Rinse',
+                    desc: 'Wash off thoroughly with gentle shampoo and lukewarm water.' },
                 ].map(({ step, title, desc }) => (
                   <div key={step} className="flex gap-4 items-start">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center
@@ -565,21 +641,171 @@ export default function ProductDetail() {
                       {step}
                     </div>
                     <div>
-                      <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-dark)' }}>
-                        {title}
-                      </p>
-                      <p className="text-sm leading-relaxed" style={{ color: 'var(--color-muted)' }}>
-                        {desc}
-                      </p>
+                      <p className="text-sm font-semibold mb-1"
+                         style={{ color: 'var(--color-dark)' }}>{title}</p>
+                      <p className="text-sm leading-relaxed"
+                         style={{ color: 'var(--color-muted)' }}>{desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
           )}
+
+          {/* ── RETURN POLICY TAB — fully dynamic ── */}
+          {activeTab === 'return' && (
+            <div className="bg-white rounded-2xl p-6"
+                 style={{ boxShadow: 'var(--shadow-card)' }}>
+              <h3 className="text-lg font-semibold mb-6"
+                  style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
+                Return Policy
+              </h3>
+
+              {product.returnPolicy?.returnable ? (
+                <div className="space-y-5">
+
+                  {/* Eligible badge */}
+                  <div className="flex items-center gap-3 p-4 rounded-2xl"
+                       style={{ backgroundColor: '#F0FDF4' }}>
+                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center
+                                    justify-center shrink-0">
+                      <FiRefreshCw size={18} color="white" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-green-700">
+                        {product.returnPolicy.returnDays || 7}-Day Return Policy
+                      </p>
+                      <p className="text-xs text-green-600 mt-0.5">
+                        This product is eligible for returns
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Policy note */}
+                  {product.returnPolicy.description && (
+                    <div className="p-4 rounded-xl"
+                         style={{ backgroundColor: 'var(--color-soft)' }}>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-1"
+                         style={{ color: 'var(--color-muted)' }}>Policy Note</p>
+                      <p className="text-sm" style={{ color: 'var(--color-dark)' }}>
+                        {product.returnPolicy.description}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Return steps */}
+                  <div>
+                    <p className="text-sm font-semibold mb-4"
+                       style={{ color: 'var(--color-dark)' }}>
+                      How to return this product:
+                    </p>
+                    <div className="space-y-4">
+                      {[
+                        {
+                          step: '01',
+                          title: 'Place Return Request',
+                          desc: `Go to My Orders → find this order → click "Check Return Eligibility" within ${product.returnPolicy.returnDays || 7} days of delivery.`,
+                        },
+                        {
+                          step: '02',
+                          title: 'Select Reason',
+                          desc: 'Choose the reason for return and submit your request.',
+                        },
+                        {
+                          step: '03',
+                          title: 'Admin Review',
+                          desc: 'Our team will review your request within 1-2 business days.',
+                        },
+                        {
+                          step: '04',
+                          title: 'Ship the Product',
+                          desc: 'Once approved, ship the product back to our address. Keep the original packaging.',
+                        },
+                        {
+                          step: '05',
+                          title: 'Refund Processed',
+                          desc: 'Refund will be processed within 5-7 business days after we receive the product.',
+                        },
+                      ].map(({ step, title, desc }) => (
+                        <div key={step} className="flex gap-4 items-start">
+                          <div className="w-8 h-8 rounded-full flex items-center
+                                          justify-center text-xs font-bold text-white shrink-0"
+                               style={{ backgroundColor: '#22c55e' }}>
+                            {step}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold mb-0.5"
+                               style={{ color: 'var(--color-dark)' }}>{title}</p>
+                            <p className="text-xs leading-relaxed"
+                               style={{ color: 'var(--color-muted)' }}>{desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Return window highlight */}
+                  <div className="p-4 rounded-xl flex items-center gap-3"
+                       style={{ backgroundColor: 'var(--color-soft)' }}>
+                    <FiPackage size={18} style={{ color: 'var(--color-primary)' }} />
+                    <p className="text-sm" style={{ color: 'var(--color-dark)' }}>
+                      You have{' '}
+                      <strong style={{ color: 'var(--color-primary)' }}>
+                        {product.returnPolicy.returnDays || 7} days
+                      </strong>
+                      {' '}from the date of delivery to request a return.
+                    </p>
+                  </div>
+
+                </div>
+              ) : (
+                /* Non-returnable */
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3 p-4 rounded-2xl"
+                       style={{ backgroundColor: '#FEF2F2' }}>
+                    <div className="w-10 h-10 rounded-full bg-red-500 flex items-center
+                                    justify-center shrink-0">
+                      <FiX size={18} color="white" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-red-600">
+                        Non-Returnable Product
+                      </p>
+                      <p className="text-xs text-red-500 mt-0.5">
+                        This product cannot be returned
+                      </p>
+                    </div>
+                  </div>
+
+                  {product.returnPolicy.description && (
+                    <div className="p-4 rounded-xl"
+                         style={{ backgroundColor: 'var(--color-soft)' }}>
+                      <p className="text-xs font-semibold uppercase tracking-widest mb-1"
+                         style={{ color: 'var(--color-muted)' }}>Reason</p>
+                      <p className="text-sm" style={{ color: 'var(--color-dark)' }}>
+                        {product.returnPolicy.description}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="p-4 rounded-xl"
+                       style={{ backgroundColor: 'var(--color-soft)' }}>
+                    <p className="text-xs font-semibold uppercase tracking-widest mb-2"
+                       style={{ color: 'var(--color-muted)' }}>
+                      Still have issues?
+                    </p>
+                    <p className="text-sm" style={{ color: 'var(--color-dark)' }}>
+                      If you received a damaged or wrong product, please contact our
+                      support team within 48 hours of delivery with photos.
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* ── RELATED PRODUCTS ── */}
+        {/* Related Products */}
         {related.length > 0 && (
           <div className="pb-16">
             <div className="flex items-end justify-between mb-6">
@@ -600,8 +826,8 @@ export default function ProductDetail() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
               {related.map(p => (
                 <Link key={p._id} to={`/products/${p._id}`}
-                      className="bg-white rounded-2xl overflow-hidden group transition-all
-                                 duration-300 hover:-translate-y-1"
+                      className="bg-white rounded-2xl overflow-hidden group
+                                 transition-all duration-300 hover:-translate-y-1"
                       style={{ boxShadow: 'var(--shadow-card)' }}>
                   <div className="aspect-square overflow-hidden"
                        style={{ backgroundColor: 'var(--color-soft)' }}>
@@ -610,11 +836,13 @@ export default function ProductDetail() {
                                     transition-transform duration-500" />
                   </div>
                   <div className="p-3">
-                    <p className="text-xs mb-0.5" style={{ color: 'var(--color-muted)' }}>{p.brand}</p>
+                    <p className="text-xs mb-0.5"
+                       style={{ color: 'var(--color-muted)' }}>{p.brand}</p>
                     <p className="text-xs font-semibold line-clamp-2 mb-1"
                        style={{ color: 'var(--color-dark)' }}>{p.name}</p>
                     <p className="text-sm font-semibold"
-                       style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-serif)' }}>
+                       style={{ color: 'var(--color-primary)',
+                                fontFamily: 'var(--font-serif)' }}>
                       ₹{p.price}
                     </p>
                   </div>

@@ -43,19 +43,19 @@ const getProductById = async (req, res) => {
 /* POST /api/products/admin */
 const createProduct = async (req, res) => {
   try {
-    console.log('Files received:', req.files?.length);
-    console.log('Body received:', req.body);
-
     const { name, description, price, category, brand, stock } = req.body;
 
     if (!req.files || req.files.length === 0)
-      return res.status(400).json({ message: 'At least one product image is required' });
-
-    if (req.files.length > 4)
-      return res.status(400).json({ message: 'Maximum 4 images allowed' });
+      return res.status(400).json({ message: 'At least one image is required' });
 
     const images = req.files.map(f => f.path);
-    console.log('Image URLs:', images);
+
+    /* Parse return policy */
+    const returnPolicy = {
+      returnable:  req.body.returnable !== 'false',
+      returnDays:  Number(req.body.returnDays)  || 7,
+      description: req.body.returnDescription   || '',
+    };
 
     const product = await Product.create({
       name, description, brand,
@@ -64,6 +64,7 @@ const createProduct = async (req, res) => {
       stock:    Number(stock),
       images,
       image:    images[0],
+      returnPolicy,
     });
 
     res.status(201).json(product);
@@ -113,6 +114,16 @@ const updateProduct = async (req, res) => {
     product.stock       = stock       ? Number(stock)  : product.stock;
     product.images      = currentImages;
     product.image       = currentImages[0];
+
+
+   /* Return policy */
+if (req.body.returnable !== undefined) {
+  product.returnPolicy = {
+    returnable:  req.body.returnable !== 'false',
+    returnDays:  Number(req.body.returnDays)  || 7,
+    description: req.body.returnDescription   || '',
+  };
+}
 
     await product.save();
     res.json(product);

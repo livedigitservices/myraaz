@@ -1,5 +1,6 @@
 const express = require('express');
 const router  = express.Router();
+const Product = require('../models/Product');
 const { protect, admin }  = require('../middleware/authMiddleware');
 const { upload }          = require('../config/cloudinary');
 const {
@@ -41,5 +42,5 @@ router.post('/:id/reviews', protect, async (req, res) => {
   }
 });
 
-const Product = require('../models/Product');
+
 module.exports = router;

@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   FiTag, FiPlus, FiEdit2, FiTrash2, FiX,
   FiCheck, FiTrendingUp, FiBox, FiShoppingCart,
-  FiUsers, FiEye, FiToggleLeft, FiToggleRight
+  FiUsers, FiEye, FiToggleLeft, FiToggleRight,
+  FiPackage
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -153,6 +154,8 @@ export default function AdminCoupons() {
         <SideLink to="/admin/orders"   icon={<FiShoppingCart size={16} />} label="Orders"          />
         <SideLink to="/admin/users"    icon={<FiUsers size={16} />}        label="Users"           />
         <SideLink to="/admin/coupons"  icon={<FiTag size={16} />}          label="Coupons" active  />
+        <SideLink to="/admin/returns" icon={<FiPackage size={16} />} label="Returns" />
+
         <div className="mt-auto px-4">
           <Link to="/" className="flex items-center gap-2 text-xs"
                 style={{ color: 'var(--color-muted)' }}>

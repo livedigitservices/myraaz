@@ -53,6 +53,8 @@ const SidebarContent = ({ onClose }) => (
     <SideLink to="/admin/orders"   onClick={onClose} icon={<FiShoppingCart size={16} />} label="Orders" active  />
     <SideLink to="/admin/users"    onClick={onClose} icon={<FiUsers size={16} />}        label="Users"          />
     <SideLink to="/admin/coupons"  onClick={onClose} icon={<FiTag size={16} />}          label="Coupons"        />
+    <SideLink to="/admin/returns" onClick={onClose} icon={<FiPackage size={16} />} label="Returns" />
+
     <div className="mt-auto px-4">
       <Link to="/" className="flex items-center gap-2 text-xs"
             style={{ color: 'var(--color-muted)' }}>
