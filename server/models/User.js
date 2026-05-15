@@ -55,6 +55,9 @@ const userSchema = new mongoose.Schema(
   type:    Boolean,
   default: false,
 },
+returnCount:   { type: Number, default: 0 },
+flaggedCount:  { type: Number, default: 0 },
+isFraudSuspect: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

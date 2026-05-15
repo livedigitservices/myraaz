@@ -1,47 +1,47 @@
-const Order   = require('../models/Order');
-const Product = require('../models/Product');
+const Return   = require('../models/Return');
+const Order    = require('../models/Order');
+const Product  = require('../models/Product');
+const User     = require('../models/User');
+const { checkFraud }                       = require('../services/fraudService');
+const { processRefund, calculateRefundAmount } = require('../services/refundService');
+const { getWallet }                        = require('../services/walletService');
 
-/* ─────────────────────────────────────
+/* ─────────────────────────────────────────
    GET /api/returns/eligibility/:orderId
-   Check if order items are returnable
-───────────────────────────────────── */
+───────────────────────────────────────── */
 const checkEligibility = async (req, res) => {
   try {
     const order = await Order.findById(req.params.orderId);
-
     if (!order)
       return res.status(404).json({ message: 'Order not found' });
 
     if (order.user.toString() !== req.user._id.toString())
       return res.status(403).json({ message: 'Not authorized' });
 
-    /* Must be delivered */
     if (order.status !== 'delivered')
+      return res.json({ eligible: false, message: 'Only delivered orders can be returned', items: [] });
+
+    const existing = await Return.findOne({ order: order._id });
+    if (existing)
       return res.json({
         eligible: false,
-        message:  'Only delivered orders can be returned',
-        items:    [],
+        message: 'Return already requested for this order',
+        existing: {
+          status: existing.status,
+          refundAmount: existing.refundAmount,
+          refundMethod: existing.refundMethod,
+          adminNote: existing.adminNote,
+        },
+        items: [],
       });
 
-    /* Already requested */
-    if (order.returnRequest?.requested)
-      return res.json({
-        eligible:  false,
-        message:   'Return already requested',
-        existing:  order.returnRequest,
-        items:     [],
-      });
-
-    /* Fetch all products in the order */
     const productIds = order.orderItems.map(i => i.product).filter(Boolean);
     const products   = await Product.find({ _id: { $in: productIds } });
-
     const productMap = {};
     products.forEach(p => { productMap[p._id.toString()] = p; });
 
     const deliveredAt = new Date(order.deliveredAt || order.updatedAt);
 
-    /* Check each item */
     const items = order.orderItems.map(item => {
       const product    = productMap[item.product?.toString()];
       const returnable = product?.returnPolicy?.returnable ?? true;
@@ -62,48 +62,34 @@ const checkEligibility = async (req, res) => {
         reason   = `Return window expired (${returnDays}-day policy)`;
       }
 
-      return {
-        name:     item.name,
-        image:    item.image,
-        price:    item.price,
-        quantity: item.quantity,
-        eligible,
-        reason,
-        returnDays,
-        daysLeft,
-        policyNote,
-      };
+      return { productId: item.product, name: item.name, image: item.image,
+               price: item.price, quantity: item.quantity, eligible, reason, returnDays, daysLeft };
     });
 
-    const hasEligible = items.some(i => i.eligible);
+    const eligibleItems = items.filter(i => i.eligible);
+    const hasEligible   = eligibleItems.length > 0;
+    const refundBreakdown = hasEligible ? calculateRefundAmount(order, eligibleItems) : null;
 
-    res.json({
-      eligible:   hasEligible,
-      message:    hasEligible
-        ? 'Some or all items are eligible for return'
-        : 'No items in this order are eligible for return',
-      deliveredAt,
-      items,
-    });
+    res.json({ eligible: hasEligible,
+               message: hasEligible ? 'Items eligible for return' : 'No returnable items',
+               deliveredAt, paymentMethod: order.paymentMethod, items, refundBreakdown });
   } catch (err) {
-    console.error('Check eligibility error:', err.message);
+    console.error('Eligibility check error:', err.message);
     res.status(500).json({ message: err.message });
   }
 };
 
-/* ─────────────────────────────────────
+/* ─────────────────────────────────────────
    POST /api/returns/:orderId
-   User submits return request
-───────────────────────────────────── */
+───────────────────────────────────────── */
 const requestReturn = async (req, res) => {
   try {
-    const { reason } = req.body;
+    const { reason, description, selectedItems, refundMethod, upiId, bankDetails } = req.body;
 
     if (!reason)
-      return res.status(400).json({ message: 'Please provide a reason for return' });
+      return res.status(400).json({ message: 'Please provide a reason' });
 
     const order = await Order.findById(req.params.orderId);
-
     if (!order)
       return res.status(404).json({ message: 'Order not found' });
 
@@ -113,55 +99,69 @@ const requestReturn = async (req, res) => {
     if (order.status !== 'delivered')
       return res.status(400).json({ message: 'Only delivered orders can be returned' });
 
-    if (order.returnRequest?.requested)
-      return res.status(400).json({ message: 'Return already requested for this order' });
+    const existing = await Return.findOne({ order: order._id });
+    if (existing)
+      return res.status(400).json({ message: 'Return already requested' });
 
-    /* Check eligible items */
     const productIds = order.orderItems.map(i => i.product).filter(Boolean);
     const products   = await Product.find({ _id: { $in: productIds } });
     const productMap = {};
     products.forEach(p => { productMap[p._id.toString()] = p; });
 
-    const deliveredAt = new Date(order.deliveredAt || order.updatedAt);
+    const deliveredAt    = new Date(order.deliveredAt || order.updatedAt);
+    const returnItems    = [];
+    const nonReturnItems = [];
 
-    const returnableItems    = [];
-    const nonReturnableItems = [];
+    for (const item of order.orderItems) {
+      if (selectedItems && !selectedItems.includes(item.product?.toString())) continue;
 
-    order.orderItems.forEach(item => {
       const product    = productMap[item.product?.toString()];
       const returnable = product?.returnPolicy?.returnable ?? true;
       const returnDays = product?.returnPolicy?.returnDays ?? 7;
       const daysSince  = (Date.now() - deliveredAt) / (1000 * 60 * 60 * 24);
 
       if (!returnable) {
-        nonReturnableItems.push(item.name);
+        nonReturnItems.push({ name: item.name, reason: product?.returnPolicy?.description || 'Non-returnable product' });
       } else if (daysSince > returnDays) {
-        nonReturnableItems.push(`${item.name} (window expired)`);
+        nonReturnItems.push({ name: item.name, reason: `Return window expired (${returnDays} days)` });
       } else {
-        returnableItems.push(item.name);
+        returnItems.push({ product: item.product, name: item.name, image: item.image,
+                           price: item.price, quantity: item.quantity, reason });
       }
+    }
+
+    if (returnItems.length === 0)
+      return res.status(400).json({ message: 'No eligible items to return', nonReturnItems });
+
+    const fraudCheck = await checkFraud(req.user._id, order._id);
+    const { totalRefund, isPartial } = calculateRefundAmount(order, returnItems);
+
+    let finalRefundMethod = refundMethod || 'wallet';
+    if (order.paymentMethod === 'COD') {
+      finalRefundMethod = upiId ? 'upi' : bankDetails ? 'bank' : 'wallet';
+    }
+
+    const returnDoc = await Return.create({
+      order: order._id, user: req.user._id, returnItems, nonReturnItems,
+      reason, description: description || '', refundMethod: finalRefundMethod,
+      refundAmount: totalRefund, partialRefund: isPartial,
+      upiId: upiId || '', bankDetails: bankDetails || {},
+      fraudFlags: fraudCheck.flags,
+      requiresManualReview: fraudCheck.requiresManualReview,
+      status: 'pending',
     });
 
-    if (returnableItems.length === 0)
-      return res.status(400).json({
-        message: 'No items in this order are eligible for return',
-        nonReturnableItems,
-      });
+    await User.findByIdAndUpdate(req.user._id, { $inc: { returnCount: 1 } });
 
-    order.returnRequest = {
-      requested:          true,
-      reason,
-      requestedAt:        new Date(),
-      status:             'pending',
-      returnableItems,
-      nonReturnableItems,
-    };
-
+    order.returnRequest = { requested: true, reason, requestedAt: new Date(), status: 'pending' };
     await order.save();
 
-    res.json({
-      message: 'Return request submitted successfully',
-      order,
+    res.status(201).json({
+      message: fraudCheck.requiresManualReview
+        ? 'Return request submitted. Under manual review due to account activity.'
+        : 'Return request submitted successfully',
+      return: returnDoc, refundAmount: totalRefund, isPartial,
+      requiresManualReview: fraudCheck.requiresManualReview,
     });
   } catch (err) {
     console.error('Request return error:', err.message);
@@ -169,51 +169,215 @@ const requestReturn = async (req, res) => {
   }
 };
 
-/* ─────────────────────────────────────
+/* ─────────────────────────────────────────
    GET /api/returns/admin
-   Admin gets all return requests
-───────────────────────────────────── */
+   ✅ FIXED: reshape Return docs so the frontend
+   receives order-shaped objects it already expects
+───────────────────────────────────────── */
 const getAllReturns = async (req, res) => {
   try {
-    const orders = await Order.find({ 'returnRequest.requested': true })
-      .populate('user', 'name email phone')
-      .sort({ 'returnRequest.requestedAt': -1 });
+    const { status, page = 1, limit = 20 } = req.query;
+    const query = {};
+    if (status) query.status = status;
 
-    res.json(orders);
+    const total   = await Return.countDocuments(query);
+    const returns = await Return.find(query)
+      .populate('user', 'name email phone returnCount isFraudSuspect')
+      .populate({
+        path:     'order',
+        select:   'totalPrice paymentMethod paymentResult orderItems shippingAddress',
+        // ✅ populate the product ref inside each order line-item so name/image/price are present
+        populate: {
+          path:   'orderItems.product',
+          select: 'name images price',
+        },
+      })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+
+    /*
+     * ✅ Reshape: the frontend expects an array of order-like objects where
+     *    - _id          = the Return doc's _id  (used for approve/reject action)
+     *    - user         = populated user object
+     *    - orderItems   = the order's line items (with name, price, image filled in)
+     *    - totalPrice   = order total
+     *    - shippingAddress = delivery address
+     *    - returnRequest = the embedded return status/reason the frontend reads
+     *    - refundAmount, refundMethod, partialRefund, requiresManualReview, fraudFlags
+     */
+    const shaped = returns.map(ret => {
+      const order = ret.order || {};
+
+      // Merge product fields into each line-item so item.name / item.price / item.image
+      // are always present even when the order was created before product was populated.
+      const orderItems = (order.orderItems || []).map(item => ({
+        name:     item.name     || item.product?.name             || 'Product',
+        price:    item.price    ?? item.product?.price            ?? 0,
+        image:    item.image    || item.product?.images?.[0]      || '',
+        quantity: item.quantity || 1,
+        product:  item.product,
+      }));
+
+      return {
+        // Use Return _id so approve/reject PUT /returns/admin/:returnId works correctly
+        _id:             ret._id,
+
+        // User comes from Return.user (always populated here)
+        user:            ret.user,
+
+        // Order-level fields
+        orderItems,
+        totalPrice:      order.totalPrice,
+        shippingAddress: order.shippingAddress,
+        paymentMethod:   order.paymentMethod,
+        refundMethod:    ret.refundMethod,
+        refundAmount:    ret.refundAmount,
+        partialRefund:   ret.partialRefund,
+        requiresManualReview: ret.requiresManualReview,
+        fraudFlags:      ret.fraudFlags,
+
+        // Return request block — what the frontend reads for status/reason/badge
+        returnRequest: {
+          status:             ret.status,
+          reason:             ret.reason,
+          requestedAt:        ret.createdAt,
+          adminNote:          ret.adminNote,
+          returnableItems:    (ret.returnItems    || []).map(i => i.name),
+          nonReturnableItems: (ret.nonReturnItems || []).map(i => i.name),
+        },
+      };
+    });
+
+    res.json({ returns: shaped, total, page: Number(page), totalPages: Math.ceil(total / limit) });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-/* ─────────────────────────────────────
-   PUT /api/returns/admin/:orderId
-   Admin approves or rejects return
-───────────────────────────────────── */
+/* ─────────────────────────────────────────
+   PUT /api/returns/admin/:returnId
+───────────────────────────────────────── */
 const handleReturn = async (req, res) => {
   try {
-    const { status, adminNote } = req.body;
+    const { status, adminNote, refundMethod } = req.body;
 
     if (!['approved', 'rejected'].includes(status))
-      return res.status(400).json({ message: 'Status must be approved or rejected' });
+      return res.status(400).json({ message: 'Invalid status' });
 
-    const order = await Order.findById(req.params.orderId);
+    const returnDoc = await Return.findById(req.params.returnId).populate('order');
 
-    if (!order)
-      return res.status(404).json({ message: 'Order not found' });
+    if (!returnDoc)
+      return res.status(404).json({ message: 'Return request not found' });
 
-    if (!order.returnRequest?.requested)
-      return res.status(400).json({ message: 'No return request found' });
+    if (!['pending'].includes(returnDoc.status))
+      return res.status(400).json({ message: 'Return already processed' });
 
-    order.returnRequest.status     = status;
-    order.returnRequest.resolvedAt = new Date();
-    order.returnRequest.adminNote  = adminNote || '';
+    returnDoc.adminNote  = adminNote || '';
+    returnDoc.resolvedAt = new Date();
+    returnDoc.resolvedBy = req.user._id;
 
-    if (status === 'approved')
-      order.status = 'cancelled';
+    if (status === 'rejected') {
+      returnDoc.status = 'rejected';
+      await updateOrderReturnStatus(returnDoc.order._id, 'rejected', adminNote);
+      await returnDoc.save();
+      return res.json({ message: 'Return rejected', return: returnDoc });
+    }
 
-    await order.save();
+    returnDoc.status       = 'refund_initiated';
+    returnDoc.refundMethod = refundMethod || returnDoc.refundMethod;
+    await returnDoc.save();
 
-    res.json({ message: `Return ${status}`, order });
+    const refundResult = await processRefund(returnDoc, returnDoc.order);
+
+    if (refundResult.success) {
+      returnDoc.status          = 'refund_completed';
+      returnDoc.gatewayRefundId = refundResult.refundId;
+    } else {
+      returnDoc.status    = 'refund_failed';
+      returnDoc.adminNote += ` | Refund failed: ${refundResult.error}`;
+    }
+
+    await returnDoc.save();
+
+    const order = await Order.findById(returnDoc.order._id);
+    if (order) {
+      order.status = returnDoc.partialRefund ? 'delivered' : 'returned';
+      order.returnRequest = {
+        requested:   true,
+        reason:      returnDoc.reason,
+        requestedAt: returnDoc.createdAt,
+        status:      refundResult.success ? 'approved' : 'rejected',
+        adminNote:   returnDoc.adminNote,
+      };
+      await order.save();
+    }
+
+    res.json({
+      message: refundResult.success
+        ? `Return approved. Refund of ₹${returnDoc.refundAmount} processed via ${refundResult.method}`
+        : 'Return approved but refund failed. Please process manually.',
+      return: returnDoc,
+      refundResult,
+    });
+  } catch (err) {
+    console.error('Handle return error:', err.message);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const updateOrderReturnStatus = async (orderId, status, note) => {
+  await Order.findByIdAndUpdate(orderId, {
+    'returnRequest.status':    status,
+    'returnRequest.adminNote': note,
+  });
+};
+
+/* ─────────────────────────────────────────
+   GET /api/returns/my
+───────────────────────────────────────── */
+const getMyReturns = async (req, res) => {
+  try {
+    const returns = await Return.find({ user: req.user._id })
+      .populate('order', 'totalPrice paymentMethod orderItems')
+      .sort({ createdAt: -1 });
+    res.json(returns);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ─────────────────────────────────────────
+   GET /api/returns/wallet
+───────────────────────────────────────── */
+const getUserWallet = async (req, res) => {
+  try {
+    const wallet = await getWallet(req.user._id);
+    res.json(wallet);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+/* ─────────────────────────────────────────
+   POST /api/returns/webhook/razorpay
+───────────────────────────────────────── */
+const handleRazorpayWebhook = async (req, res) => {
+  try {
+    const { event, payload } = req.body;
+    console.log('Razorpay webhook:', event);
+
+    const refundId = payload?.refund?.entity?.id;
+    if (refundId && ['refund.processed','refund.completed','refund.failed'].includes(event)) {
+      const returnDoc = await Return.findOne({ gatewayRefundId: refundId });
+      if (returnDoc) {
+        returnDoc.status = event === 'refund.failed' ? 'refund_failed' : 'refund_completed';
+        returnDoc.webhookEvents.push({ event, data: payload, receivedAt: new Date() });
+        await returnDoc.save();
+      }
+    }
+
+    res.json({ received: true });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -224,4 +388,7 @@ module.exports = {
   requestReturn,
   getAllReturns,
   handleReturn,
+  getMyReturns,
+  getUserWallet,
+  handleRazorpayWebhook,
 };

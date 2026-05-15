@@ -90,10 +90,15 @@ const ReturnBadge = ({ status }) => {
    RETURN REQUEST SECTION
 ════════════════════════════════════ */
 const ReturnSection = ({ order, onUpdate }) => {
-  const [step, setStep]             = useState('idle'); // idle | checking | form | submitted
+  const [step, setStep]               = useState('idle');
   const [eligibility, setEligibility] = useState(null);
-  const [reason, setReason]         = useState('');
-  const [loading, setLoading]       = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [reason, setReason]           = useState('');
+  const [description, setDescription] = useState('');
+  const [refundMethod, setRefundMethod] = useState('wallet');
+  const [upiId, setUpiId]             = useState('');
+  const [loading, setLoading]         = useState(false);
+  const [myReturn, setMyReturn]       = useState(null);
 
   const REASONS = [
     'Product damaged or defective',
@@ -104,57 +109,186 @@ const ReturnSection = ({ order, onUpdate }) => {
     'Other',
   ];
 
-  /* Already has a return request */
-  if (order.returnRequest?.requested) {
+  /* Fetch existing return */
+  useEffect(() => {
+    if (order.returnRequest?.requested) {
+      api.get('/returns/my')
+        .then(({ data }) => {
+          const ret = data.find(r => r.order?._id === order._id ||
+            r.order === order._id);
+          if (ret) setMyReturn(ret);
+        })
+        .catch(() => {});
+    }
+  }, [order._id]);
+
+  const statusConfig = {
+    pending: {
+      bg: '#FEF3C7', color: '#D97706',
+      label: '⏳ Return Pending',
+      desc: 'Your return request is under review.',
+    },
+    approved: {
+      bg: '#D1FAE5', color: '#059669',
+      label: '✓ Return Approved',
+      desc: 'Your return has been approved.',
+    },
+    rejected: {
+      bg: '#FEE2E2', color: '#DC2626',
+      label: '✗ Return Rejected',
+      desc: 'Your return request was rejected.',
+    },
+    refund_initiated: {
+      bg: '#DBEAFE', color: '#2563EB',
+      label: '🔄 Refund Processing',
+      desc: 'Your refund is being processed.',
+    },
+    refund_completed: {
+      bg: '#D1FAE5', color: '#059669',
+      label: '✅ Refund Completed',
+      desc: 'Your refund has been processed successfully.',
+    },
+    refund_failed: {
+      bg: '#FEE2E2', color: '#DC2626',
+      label: '❌ Refund Failed',
+      desc: 'Refund processing failed. Contact support.',
+    },
+  };
+
+  /* Show existing return status */
+  if (order.returnRequest?.requested || myReturn) {
+    const status  = myReturn?.status || order.returnRequest?.status;
+    const config  = statusConfig[status] || statusConfig.pending;
+    const refAmt  = myReturn?.refundAmount;
+    const refMeth = myReturn?.refundMethod;
+
     return (
-      <div className="mt-4 p-4 rounded-xl"
+      <div className="mt-4 p-4 rounded-xl space-y-3"
            style={{ backgroundColor: 'var(--color-soft)' }}>
-        <p className="text-xs font-semibold uppercase tracking-widest mb-2"
+        <p className="text-xs font-semibold uppercase tracking-widest"
            style={{ color: 'var(--color-muted)' }}>Return Request</p>
-        <ReturnBadge status={order.returnRequest.status} />
-        <p className="text-xs mt-2" style={{ color: 'var(--color-muted)' }}>
-          Reason: {order.returnRequest.reason}
-        </p>
-        {order.returnRequest.returnableItems?.length > 0 && (
-          <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
-            Items: {order.returnRequest.returnableItems.join(', ')}
+
+        {/* Status badge */}
+        <div className="flex items-center gap-2 p-3 rounded-xl"
+             style={{ backgroundColor: config.bg }}>
+          <div className="flex-1">
+            <p className="text-sm font-semibold" style={{ color: config.color }}>
+              {config.label}
+            </p>
+            <p className="text-xs mt-0.5" style={{ color: config.color }}>
+              {config.desc}
+            </p>
+          </div>
+        </div>
+
+        {/* Refund details */}
+        {refAmt > 0 && (
+          <div className="grid grid-cols-2 gap-2">
+            <div className="p-3 rounded-xl bg-white text-center">
+              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                Refund Amount
+              </p>
+              <p className="text-base font-semibold mt-0.5"
+                 style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-serif)' }}>
+                ₹{refAmt.toLocaleString('en-IN')}
+              </p>
+            </div>
+            <div className="p-3 rounded-xl bg-white text-center">
+              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                Refund Via
+              </p>
+              <p className="text-sm font-semibold mt-0.5 capitalize"
+                 style={{ color: 'var(--color-dark)' }}>
+                {refMeth === 'wallet' ? '👛 Wallet'
+                  : refMeth === 'razorpay' ? '💳 Razorpay'
+                  : refMeth === 'stripe' ? '🌍 Stripe'
+                  : refMeth === 'wallet_cod' ? '👛 Wallet (COD)'
+                  : refMeth || 'Wallet'}
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Partial refund note */}
+        {myReturn?.partialRefund && (
+          <p className="text-xs px-3 py-2 rounded-lg"
+             style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>
+            ℹ️ Partial refund — only returned items are refunded.
           </p>
         )}
-        {order.returnRequest.adminNote && (
-          <div className="mt-2 p-2 rounded-lg bg-white">
-            <p className="text-xs font-medium" style={{ color: 'var(--color-dark)' }}>
-              Admin note:
-            </p>
-            <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-              {order.returnRequest.adminNote}
+
+        {/* Admin note */}
+        {(myReturn?.adminNote || order.returnRequest?.adminNote) && (
+          <div className="p-3 rounded-xl bg-white">
+            <p className="text-xs font-semibold"
+               style={{ color: 'var(--color-muted)' }}>Note from team:</p>
+            <p className="text-sm mt-0.5" style={{ color: 'var(--color-dark)' }}>
+              {myReturn?.adminNote || order.returnRequest?.adminNote}
             </p>
           </div>
         )}
+
+        {/* Reason */}
+        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+          Reason: {myReturn?.reason || order.returnRequest?.reason}
+        </p>
       </div>
     );
   }
 
-  /* Check eligibility */
   const handleCheck = async () => {
     try {
       setStep('checking');
       const { data } = await api.get(`/returns/eligibility/${order._id}`);
       setEligibility(data);
+      /* Pre-select all eligible items */
+      const eligible = data.items?.filter(i => i.eligible).map(i =>
+        i.productId?.toString()
+      ).filter(Boolean);
+      setSelectedItems(eligible || []);
       setStep('form');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to check eligibility');
+      toast.error('Failed to check eligibility');
       setStep('idle');
     }
   };
 
-  /* Submit return */
+  const toggleItem = (productId) => {
+    setSelectedItems(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const selectedRefundAmount = () => {
+    if (!eligibility) return 0;
+    const selected = eligibility.items.filter(i =>
+      i.eligible && selectedItems.includes(i.productId?.toString())
+    );
+    const itemTotal = selected.reduce((s, i) => s + i.price * i.quantity, 0);
+    const isAll     = selected.length === eligibility.items.filter(i => i.eligible).length;
+    const shipping  = isAll && eligibility.refundBreakdown?.shippingRefund > 0
+      ? eligibility.refundBreakdown.shippingRefund : 0;
+    return itemTotal + shipping;
+  };
+
   const handleSubmit = async () => {
-    if (!reason) return toast.error('Please select a reason');
+    if (!reason)              return toast.error('Please select a reason');
+    if (selectedItems.length === 0) return toast.error('Please select at least one item');
+
     try {
       setLoading(true);
-      const { data } = await api.post(`/returns/${order._id}`, { reason });
-      toast.success('Return request submitted! 📦');
-      onUpdate(data.order);
+      const { data } = await api.post(`/returns/${order._id}`, {
+        reason,
+        description,
+        selectedItems,
+        refundMethod,
+        upiId: upiId || undefined,
+      });
+      toast.success(data.message);
+      onUpdate({ ...order, returnRequest: { requested: true, status: 'pending', reason } });
+      setMyReturn(data.return);
       setStep('idle');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to submit return');
@@ -169,7 +303,7 @@ const ReturnSection = ({ order, onUpdate }) => {
       <p className="text-xs font-semibold uppercase tracking-widest mb-3"
          style={{ color: 'var(--color-muted)' }}>Return Policy</p>
 
-      {/* IDLE — show check button */}
+      {/* IDLE */}
       {step === 'idle' && (
         <div>
           <p className="text-xs mb-3" style={{ color: 'var(--color-muted)' }}>
@@ -191,7 +325,8 @@ const ReturnSection = ({ order, onUpdate }) => {
                style={{ color: 'var(--color-primary)' }}>
             <circle className="opacity-25" cx="12" cy="12" r="10"
                     stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            <path className="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8v8z" />
           </svg>
           <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
             Checking eligibility...
@@ -199,124 +334,235 @@ const ReturnSection = ({ order, onUpdate }) => {
         </div>
       )}
 
-      {/* FORM — show eligibility + reason */}
+      {/* FORM */}
       {step === 'form' && eligibility && (
         <div className="space-y-4">
 
-          {/* Per-item status */}
-          <div className="space-y-2">
-            <p className="text-xs font-medium" style={{ color: 'var(--color-dark)' }}>
-              Item Return Status
+          {/* Item selection */}
+          <div>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-dark)' }}>
+              Select items to return
             </p>
-            {eligibility.items.map((item, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-xl"
-                   style={{ backgroundColor: item.eligible ? '#F0FDF4' : '#FEF2F2' }}>
-                {/* Image */}
-                <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0"
-                     style={{ backgroundColor: 'var(--color-soft)' }}>
-                  <img src={item.image} alt={item.name}
-                       className="w-full h-full object-cover" />
-                </div>
+            <div className="space-y-2">
+              {eligibility.items.map((item, i) => (
+                <label key={i}
+                  className="flex items-center gap-3 p-3 rounded-xl cursor-pointer
+                             transition-all"
+                  style={{
+                    backgroundColor: item.eligible
+                      ? selectedItems.includes(item.productId?.toString())
+                        ? 'white' : 'rgba(255,255,255,0.5)'
+                      : '#FEF2F2',
+                    border: item.eligible && selectedItems.includes(item.productId?.toString())
+                      ? '1.5px solid var(--color-primary)'
+                      : '1.5px solid transparent',
+                    cursor: item.eligible ? 'pointer' : 'not-allowed',
+                  }}
+                  onClick={() => item.eligible && toggleItem(item.productId?.toString())}>
 
-                {/* Info */}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium line-clamp-1"
-                     style={{ color: 'var(--color-dark)' }}>
-                    {item.name}
-                  </p>
-                  {item.eligible ? (
-                    <p className="text-xs text-green-600 mt-0.5">
-                      ✓ Returnable · {item.daysLeft} day{item.daysLeft !== 1 ? 's' : ''} left
-                    </p>
-                  ) : (
-                    <p className="text-xs text-red-500 mt-0.5">
-                      ✗ {item.reason}
-                    </p>
-                  )}
-                </div>
+                  {/* Checkbox */}
+                  <div className="w-4 h-4 rounded border-2 flex items-center
+                                  justify-center shrink-0"
+                       style={{
+                         borderColor: item.eligible
+                           ? selectedItems.includes(item.productId?.toString())
+                             ? 'var(--color-primary)' : 'var(--color-secondary)'
+                           : '#ef4444',
+                         backgroundColor: item.eligible &&
+                           selectedItems.includes(item.productId?.toString())
+                           ? 'var(--color-primary)' : 'transparent',
+                       }}>
+                    {item.eligible && selectedItems.includes(item.productId?.toString()) && (
+                      <svg width="8" height="8" viewBox="0 0 8 8" fill="none">
+                        <path d="M1 4L3 6L7 2" stroke="white" strokeWidth="1.5"
+                              strokeLinecap="round" />
+                      </svg>
+                    )}
+                  </div>
 
-                {/* Badge */}
-                <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0"
-                     style={{ backgroundColor: item.eligible ? '#22c55e' : '#ef4444' }}>
-                  <span className="text-white text-xs font-bold">
-                    {item.eligible ? '✓' : '✗'}
-                  </span>
-                </div>
-              </div>
-            ))}
+                  {/* Image */}
+                  <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0"
+                       style={{ backgroundColor: 'var(--color-soft)' }}>
+                    <img src={item.image} alt={item.name}
+                         className="w-full h-full object-cover" />
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium line-clamp-1"
+                       style={{ color: 'var(--color-dark)' }}>{item.name}</p>
+                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                      ₹{item.price} × {item.quantity}
+                    </p>
+                  </div>
+
+                  {/* Status */}
+                  <div className="shrink-0 text-right">
+                    {item.eligible ? (
+                      <p className="text-xs text-green-600">
+                        ✓ {item.daysLeft}d left
+                      </p>
+                    ) : (
+                      <p className="text-xs text-red-500 max-w-20 text-right">
+                        {item.reason?.split('(')[0]}
+                      </p>
+                    )}
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
 
-          {/* If eligible — show reason form */}
-          {eligibility.eligible ? (
-            <div className="space-y-3">
-              <p className="text-sm font-medium" style={{ color: 'var(--color-dark)' }}>
-                Select a reason
+          {/* Refund amount preview */}
+          {selectedItems.length > 0 && (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-white">
+              <p className="text-sm" style={{ color: 'var(--color-dark)' }}>
+                Estimated Refund
               </p>
-              <div className="space-y-2">
-                {REASONS.map(r => (
-                  <label key={r}
-                    className="flex items-center gap-3 p-2.5 rounded-xl cursor-pointer
-                               transition-all"
-                    style={{
-                      backgroundColor: reason === r ? 'white' : 'transparent',
-                      border: reason === r
-                        ? '1.5px solid var(--color-primary)'
-                        : '1.5px solid transparent',
-                    }}
-                    onClick={() => setReason(r)}>
-                    {/* Radio */}
-                    <div className="w-4 h-4 rounded-full border-2 flex items-center
-                                    justify-center shrink-0"
-                         style={{
-                           borderColor: reason === r
-                             ? 'var(--color-primary)' : 'var(--color-secondary)',
-                           backgroundColor: reason === r
-                             ? 'var(--color-primary)' : 'transparent',
-                         }}>
-                      {reason === r && (
-                        <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                      )}
-                    </div>
-                    <span className="text-sm" style={{ color: 'var(--color-dark)' }}>
-                      {r}
-                    </span>
-                  </label>
-                ))}
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <button onClick={handleSubmit} disabled={loading || !reason}
-                  className="flex items-center gap-2 px-5 py-2.5 rounded-full text-white
-                             text-sm font-medium transition-all disabled:opacity-60"
-                  style={{ backgroundColor: 'var(--color-primary)' }}>
-                  {loading ? (
-                    <>
-                      <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10"
-                                stroke="currentColor" strokeWidth="4" />
-                        <path className="opacity-75" fill="currentColor"
-                              d="M4 12a8 8 0 018-8v8z" />
-                      </svg>
-                      Submitting...
-                    </>
-                  ) : '📦 Submit Return Request'}
-                </button>
-                <button onClick={() => { setStep('idle'); setReason(''); }}
-                  className="px-5 py-2.5 rounded-full text-sm font-medium"
-                  style={{ border: '1px solid var(--color-soft)',
-                           color: 'var(--color-muted)' }}>
-                  Cancel
-                </button>
-              </div>
+              <p className="text-base font-semibold"
+                 style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-serif)' }}>
+                ₹{selectedRefundAmount().toLocaleString('en-IN')}
+              </p>
             </div>
-          ) : (
-            /* Not eligible */
+          )}
+
+          {/* Reason */}
+          <div>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-dark)' }}>
+              Reason for return
+            </p>
+            <div className="space-y-1.5">
+              {REASONS.map(r => (
+                <label key={r} className="flex items-center gap-2.5 cursor-pointer p-2
+                                          rounded-lg transition-all"
+                       style={{
+                         backgroundColor: reason === r ? 'white' : 'transparent',
+                         border: reason === r
+                           ? '1px solid var(--color-primary)' : '1px solid transparent',
+                       }}
+                       onClick={() => setReason(r)}>
+                  <div className="w-3.5 h-3.5 rounded-full border-2 flex items-center
+                                  justify-center shrink-0"
+                       style={{
+                         borderColor: reason === r
+                           ? 'var(--color-primary)' : 'var(--color-secondary)',
+                         backgroundColor: reason === r
+                           ? 'var(--color-primary)' : 'transparent',
+                       }}>
+                    {reason === r && (
+                      <div className="w-1 h-1 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <span className="text-xs" style={{ color: 'var(--color-dark)' }}>
+                    {r}
+                  </span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div>
+            <p className="text-xs font-medium mb-1.5" style={{ color: 'var(--color-dark)' }}>
+              Additional details (optional)
+            </p>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              placeholder="Describe the issue in more detail..."
+              rows={2}
+              className="input resize-none text-xs"
+            />
+          </div>
+
+          {/* Refund method */}
+          <div>
+            <p className="text-xs font-medium mb-2" style={{ color: 'var(--color-dark)' }}>
+              Refund method
+            </p>
+            <div className="space-y-2">
+              {[
+                { value: 'wallet',           label: '👛 myRaaz Wallet',  sub: 'Instant · Use for future orders' },
+                { value: 'original_payment', label: '💳 Original Payment', sub: '5-7 business days' },
+              ].map(({ value, label, sub }) => (
+                <label key={value}
+                  className="flex items-center gap-3 p-3 rounded-xl cursor-pointer"
+                  style={{
+                    backgroundColor: refundMethod === value ? 'white' : 'transparent',
+                    border: refundMethod === value
+                      ? '1.5px solid var(--color-primary)' : '1.5px solid transparent',
+                  }}
+                  onClick={() => setRefundMethod(value)}>
+                  <div className="w-4 h-4 rounded-full border-2 flex items-center
+                                  justify-center shrink-0"
+                       style={{
+                         borderColor: refundMethod === value
+                           ? 'var(--color-primary)' : 'var(--color-secondary)',
+                         backgroundColor: refundMethod === value
+                           ? 'var(--color-primary)' : 'transparent',
+                       }}>
+                    {refundMethod === value && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium"
+                       style={{ color: 'var(--color-dark)' }}>{label}</p>
+                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{sub}</p>
+                  </div>
+                </label>
+              ))}
+
+              {/* COD — show UPI field */}
+              {eligibility.paymentMethod === 'COD' && (
+                <div className="mt-2">
+                  <p className="text-xs mb-1.5" style={{ color: 'var(--color-muted)' }}>
+                    Since you paid via COD, enter your UPI ID for refund:
+                  </p>
+                  <input
+                    type="text"
+                    value={upiId}
+                    onChange={e => setUpiId(e.target.value)}
+                    placeholder="yourname@upi"
+                    className="input text-sm"
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Submit */}
+          {eligibility.eligible && (
+            <div className="flex gap-2">
+              <button onClick={handleSubmit}
+                disabled={loading || !reason || selectedItems.length === 0}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-full text-white
+                           text-sm font-medium transition-all disabled:opacity-60"
+                style={{ backgroundColor: 'var(--color-primary)' }}>
+                {loading ? (
+                  <>
+                    <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10"
+                              stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor"
+                            d="M4 12a8 8 0 018-8v8z" />
+                    </svg>
+                    Submitting...
+                  </>
+                ) : `Submit Return (₹${selectedRefundAmount().toLocaleString('en-IN')})`}
+              </button>
+              <button onClick={() => { setStep('idle'); setReason(''); }}
+                className="px-4 py-2.5 rounded-full text-sm font-medium"
+                style={{ border: '1px solid var(--color-soft)', color: 'var(--color-muted)' }}>
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {!eligibility.eligible && (
             <div>
               <p className="text-sm font-medium text-red-500 mb-1">
                 Not eligible for return
-              </p>
-              <p className="text-xs mb-3" style={{ color: 'var(--color-muted)' }}>
-                {eligibility.message}
               </p>
               <button onClick={() => setStep('idle')}
                 className="text-xs px-4 py-2 rounded-full"
@@ -330,7 +576,6 @@ const ReturnSection = ({ order, onUpdate }) => {
     </div>
   );
 };
-
 /* ════════════════════════════════════
    ORDER CARD
 ════════════════════════════════════ */

@@ -12,13 +12,13 @@ const sendSMS = (phone, otp) => {
     const cleanPhone = phone.replace(/^\+91/, '').replace(/\s/g, '');
     const apiKey = process.env.TWOFACTOR_API_KEY;
 
-    // ✅ Correct path — no AUTOGEN/AUTOGEN2 at the end
+    //  Correct path — no AUTOGEN/AUTOGEN2 at the end
     const path = `/API/V1/${apiKey}/SMS/${cleanPhone}/${otp}`;
 
     const options = {
       hostname: '2factor.in',
       path,
-      method: 'POST',   // ✅ Must be POST, not GET
+      method: 'POST',   //  Must be POST, not GET
     };
 
     const req = https.request(options, res => {

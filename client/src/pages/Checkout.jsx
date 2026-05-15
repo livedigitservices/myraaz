@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   FiMapPin, FiCreditCard, FiCheck, FiShoppingCart,
@@ -352,7 +352,7 @@ const PaymentOption = ({ value, label, sub, emoji, selected, onClick }) => (
       <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{sub}</p>
     </div>
     <div
-      className="w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0"
+      className="w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0"
       style={{
         borderColor: selected ? 'var(--color-primary)' : 'var(--color-soft)',
         backgroundColor: selected ? 'var(--color-primary)' : 'transparent',
@@ -433,6 +433,16 @@ function CheckoutContent() {
   const [orderId, setOrderId] = useState(null);
   const [payment, setPayment] = useState('COD');
   const [upiApp, setUpiApp]   = useState('gpay');
+  const [walletBalance, setWalletBalance] = useState(0);
+
+  useEffect(() => {
+  if (userInfo) {
+    api.get('/returns/wallet')
+      .then(({ data }) => setWalletBalance(data.balance || 0))
+      .catch(() => {});
+  }
+}, [userInfo]);
+
 
   const [address, setAddress] = useState({
     fullName: userInfo?.name  || '',
@@ -532,6 +542,25 @@ function CheckoutContent() {
     toast.success('Payment successful! Order placed 🎉');
     window.scrollTo(0, 0);
   };
+
+  const handleWalletPay = async () => {
+  if (walletBalance < grandTotal)
+    return toast.error(`Insufficient wallet balance. Available: ₹${walletBalance}`);
+  try {
+    setLoading(true);
+    const id = await placeOrder('Wallet');
+    await api.post('/payment/wallet', { orderId: id });
+    setOrderId(id);
+    clearCart();
+    setPlaced(true);
+  } catch (err) {
+    toast.error(err.response?.data?.message || 'Wallet payment failed');
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
   /* ── Success screen ── */
   if (placed) return (
@@ -729,7 +758,57 @@ function CheckoutContent() {
                     selected={payment === 'Stripe'}
                     onClick={() => setPayment('Stripe')}
                   />
+
+                  {/* ── Wallet ── */}
+                  <PaymentOption
+                    value="Wallet"
+                    label="myRaaz Wallet"
+                    sub={`Available: ₹${walletBalance.toLocaleString('en-IN')} · Instant payment`}
+                    emoji="👛"
+                    selected={payment === 'Wallet'}
+                    onClick={() => setPayment('Wallet')}
+                  />
+
+                  {/* Wallet balance info — only when Wallet selected */}
+                  {payment === 'Wallet' && (
+                    <div className="p-3 rounded-xl"
+                        style={{ backgroundColor: 'var(--color-soft)' }}>
+                      <div className="flex justify-between items-center text-sm">
+                        <span style={{ color: 'var(--color-muted)' }}>Wallet balance</span>
+                        <span className="font-semibold"
+                              style={{ color: walletBalance >= grandTotal ? '#059669' : '#ef4444' }}>
+                          ₹{walletBalance.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm mt-1">
+                        <span style={{ color: 'var(--color-muted)' }}>Order total</span>
+                        <span style={{ color: 'var(--color-dark)' }}>
+                          ₹{grandTotal.toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      {walletBalance >= grandTotal ? (
+                        <p className="text-xs mt-2 text-green-600">
+                          ✓ Sufficient balance. Payment will be instant.
+                        </p>
+                      ) : (
+                        <p className="text-xs mt-2 text-red-500">
+                          ✗ Insufficient balance. You need ₹{(grandTotal - walletBalance).toLocaleString('en-IN')} more.
+                          Please choose another payment method.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+              {/* Method info */}
+              <div className="mt-4 p-3 rounded-xl text-xs"
+                  style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-muted)' }}>
+                {payment === 'COD'      && '💵 Pay with cash when your order arrives.'}
+                {payment === 'UPI'      && '📱 Click Continue — your selected UPI app will open on the next screen.'}
+                {payment === 'Razorpay' && '🇮🇳 Click Continue — Razorpay checkout will open on the next screen.'}
+                {payment === 'Stripe'   && '🌍 Click Continue — Enter your card details on the next screen.'}
+                {payment === 'Wallet'   && '👛 Click Continue — Payment will be deducted from your wallet instantly.'}
+              </div>
 
                 {/* Method-specific info */}
                 <div className="mt-4 p-3 rounded-xl text-xs"
@@ -925,6 +1004,23 @@ function CheckoutContent() {
                   {loading ? <><Spin /> Preparing order...</> : 'Continue →'}
                 </button>
               )}
+              {payment === 'Wallet' && (
+  <div className="mt-3 p-3 rounded-xl text-sm"
+       style={{ backgroundColor: 'var(--color-soft)' }}>
+    <div className="flex justify-between items-center">
+      <span style={{ color: 'var(--color-muted)' }}>Available balance</span>
+      <span className="font-semibold"
+            style={{ color: walletBalance >= grandTotal ? '#059669' : '#ef4444' }}>
+        ₹{walletBalance.toLocaleString('en-IN')}
+      </span>
+    </div>
+    {walletBalance < grandTotal && (
+      <p className="text-xs mt-1 text-red-500">
+        Insufficient balance. Need ₹{(grandTotal - walletBalance).toLocaleString('en-IN')} more.
+      </p>
+    )}
+  </div>
+)}
 
               {step === 2 && payment === 'COD' && (
                 <button
@@ -937,6 +1033,16 @@ function CheckoutContent() {
                   {loading ? <><Spin /> Placing Order...</> : <><FiCheck size={15} /> Place Order (COD)</>}
                 </button>
               )}
+
+              {step === 2 && payment === 'Wallet' && (
+  <button onClick={handleWalletPay} disabled={loading || walletBalance < grandTotal}
+    className="flex-1 flex items-center justify-center gap-2 py-3.5
+               rounded-full text-white text-sm font-medium transition-all
+               hover:opacity-90 disabled:opacity-60"
+    style={{ backgroundColor: 'var(--color-primary)' }}>
+    {loading ? <><Spin /> Processing...</> : <>👛 Pay ₹{grandTotal.toLocaleString('en-IN')}</>}
+  </button>
+)}
             </div>
           </div>
 

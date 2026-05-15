@@ -1,0 +1,177 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import {
+  FiCreditCard, FiArrowUp, FiArrowDown,
+  FiPackage, FiHeart, FiShoppingCart,
+  FiBox, FiEdit2, FiUser
+} from 'react-icons/fi';
+import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+
+const SideLink = ({ to, icon, label, active }) => (
+  <Link to={to}
+    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+               transition-all"
+    style={{
+      backgroundColor: active ? 'var(--color-primary)' : 'transparent',
+      color: active ? 'white' : 'var(--color-muted)',
+    }}>
+    {icon} {label}
+  </Link>
+);
+
+export default function Wallet() {
+  const { userInfo }        = useAuth();
+  const [wallet, setWallet] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.get('/returns/wallet')
+      .then(({ data }) => setWallet(data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  return (
+    <div className="min-h-screen flex" style={{ backgroundColor: 'var(--color-cream)' }}>
+
+      {/* Sidebar */}
+      <aside className="hidden lg:flex flex-col w-56 bg-white sticky top-16
+                        h-[calc(100vh-64px)] border-r py-6 px-3 gap-1 shrink-0"
+             style={{ borderColor: 'var(--color-soft)', boxShadow: 'var(--shadow-card)' }}>
+        <div className="flex flex-col items-center px-4 mb-6 text-center">
+          <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl
+                          font-bold text-white mb-2"
+               style={{ backgroundColor: 'var(--color-primary)' }}>
+            {userInfo?.name?.charAt(0).toUpperCase()}
+          </div>
+          <p className="text-sm font-semibold" style={{ color: 'var(--color-dark)' }}>
+            {userInfo?.name}
+          </p>
+        </div>
+        <SideLink to="/dashboard"         icon={<FiUser size={16} />}        label="Overview"      />
+        <SideLink to="/dashboard/orders"  icon={<FiPackage size={16} />}     label="My Orders"     />
+        <SideLink to="/dashboard/wallet"  icon={<FiCreditCard size={16} />}  label="Wallet" active />
+        <SideLink to="/dashboard/profile" icon={<FiEdit2 size={16} />}       label="Edit Profile"  />
+        <SideLink to="/wishlist"          icon={<FiHeart size={16} />}       label="Wishlist"      />
+        <SideLink to="/cart"              icon={<FiShoppingCart size={16} /> }label="Cart"          />
+        <SideLink to="/products"          icon={<FiBox size={16} />}         label="Shop"          />
+      </aside>
+
+      <main className="flex-1 p-4 sm:p-6 min-w-0 max-w-2xl">
+
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold"
+              style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
+            My Wallet
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>
+            Refunds and store credits
+          </p>
+        </div>
+
+        {loading ? (
+          <div className="bg-white rounded-2xl p-8 animate-pulse"
+               style={{ boxShadow: 'var(--shadow-card)' }}>
+            <div className="h-8 w-32 rounded-full mx-auto"
+                 style={{ backgroundColor: 'var(--color-soft)' }} />
+          </div>
+        ) : wallet ? (
+          <div className="space-y-5">
+
+            {/* Balance card */}
+            <div className="rounded-3xl p-8 text-center relative overflow-hidden"
+                 style={{ backgroundColor: 'var(--color-primary)' }}>
+              <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-10 bg-white" />
+              <div className="absolute -bottom-8 -left-8 w-24 h-24 rounded-full opacity-10 bg-white" />
+              <p className="text-white/70 text-sm uppercase tracking-widest mb-2">
+                Available Balance
+              </p>
+              <p className="text-5xl font-semibold text-white relative z-10"
+                 style={{ fontFamily: 'var(--font-serif)' }}>
+                ₹{wallet.balance?.toLocaleString('en-IN')}
+              </p>
+              <p className="text-white/60 text-xs mt-2">
+                Use at checkout as payment method
+              </p>
+            </div>
+
+            {/* Transactions */}
+            <div className="bg-white rounded-2xl overflow-hidden"
+                 style={{ boxShadow: 'var(--shadow-card)' }}>
+              <div className="px-5 py-4"
+                   style={{ borderBottom: '1px solid var(--color-soft)' }}>
+                <h2 className="text-sm font-semibold"
+                    style={{ color: 'var(--color-dark)' }}>
+                  Transaction History
+                </h2>
+              </div>
+
+              {wallet.transactions?.length === 0 ? (
+                <div className="py-16 text-center">
+                  <FiCreditCard size={32} style={{ color: 'var(--color-muted)' }}
+                                className="mx-auto mb-3" />
+                  <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                    No transactions yet
+                  </p>
+                  <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
+                    Refunds will appear here
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y" style={{ borderColor: 'var(--color-soft)' }}>
+                  {[...wallet.transactions].reverse().map((txn, i) => (
+                    <div key={i}
+                         className="flex items-center gap-4 px-5 py-4">
+                      {/* Icon */}
+                      <div className="w-10 h-10 rounded-full flex items-center
+                                      justify-center shrink-0"
+                           style={{
+                             backgroundColor: txn.type === 'credit' ? '#D1FAE5' : '#FEE2E2',
+                           }}>
+                        {txn.type === 'credit'
+                          ? <FiArrowDown size={16} className="text-green-500" />
+                          : <FiArrowUp size={16} className="text-red-500" />}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium line-clamp-1"
+                           style={{ color: 'var(--color-dark)' }}>
+                          {txn.description}
+                        </p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                          {new Date(txn.createdAt).toLocaleDateString('en-IN', {
+                            day: 'numeric', month: 'short', year: 'numeric',
+                            hour: '2-digit', minute: '2-digit',
+                          })}
+                        </p>
+                      </div>
+
+                      {/* Amount */}
+                      <p className="text-base font-semibold shrink-0"
+                         style={{
+                           fontFamily: 'var(--font-serif)',
+                           color: txn.type === 'credit' ? '#059669' : '#DC2626',
+                         }}>
+                        {txn.type === 'credit' ? '+' : '-'}₹{txn.amount?.toLocaleString('en-IN')}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl p-10 text-center"
+               style={{ boxShadow: 'var(--shadow-card)' }}>
+            <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+              Failed to load wallet
+            </p>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

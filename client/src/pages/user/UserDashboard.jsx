@@ -9,6 +9,7 @@ import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useWishlist } from '../../context/WishlistContext';
 import { useCart } from '../../context/CartContext';
+import { FiCreditCard } from 'react-icons/fi';
 
 /* ── Status badge ── */
 const StatusBadge = ({ status }) => {
@@ -103,12 +104,14 @@ export default function UserDashboard() {
         <SideLink to="/dashboard"         icon={<FiUser size={16} />}       label="Overview"    active />
         <SideLink to="/dashboard/orders"  icon={<FiPackage size={16} />}    label="My Orders"          />
         <SideLink to="/dashboard/profile" icon={<FiEdit2 size={16} />}      label="Edit Profile"       />
+        
 
         <p className="px-4 text-xs font-semibold uppercase tracking-widest mt-4 mb-1"
            style={{ color: 'var(--color-muted)' }}>Shopping</p>
         <SideLink to="/wishlist"          icon={<FiHeart size={16} />}       label="Wishlist"           />
         <SideLink to="/cart"              icon={<FiShoppingCart size={16} /> }label="Cart"              />
         <SideLink to="/products"          icon={<FiBox size={16} />}         label="Shop"               />
+        <SideLink to="/dashboard/wallet" icon={<FiCreditCard size={16} />} label="Wallet" />
       </aside>
 
       {/* ── MAIN ── */}

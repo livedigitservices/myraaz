@@ -1,7 +1,9 @@
 const Product    = require('../models/Product');
 const { cloudinary } = require('../config/cloudinary');
 
-/* GET /api/products */
+/* ─────────────────────────────────────────
+   GET /api/products
+───────────────────────────────────────── */
 const getProducts = async (req, res) => {
   try {
     const { search, category, minPrice, maxPrice, sort, page = 1, limit = 12 } = req.query;
@@ -29,7 +31,9 @@ const getProducts = async (req, res) => {
   }
 };
 
-/* GET /api/products/:id */
+/* ─────────────────────────────────────────
+   GET /api/products/:id
+───────────────────────────────────────── */
 const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -40,7 +44,9 @@ const getProductById = async (req, res) => {
   }
 };
 
-/* POST /api/products/admin */
+/* ─────────────────────────────────────────
+   POST /api/products/admin
+───────────────────────────────────────── */
 const createProduct = async (req, res) => {
   try {
     const { name, description, price, category, brand, stock } = req.body;
@@ -50,7 +56,6 @@ const createProduct = async (req, res) => {
 
     const images = req.files.map(f => f.path);
 
-    /* Parse return policy */
     const returnPolicy = {
       returnable:  req.body.returnable !== 'false',
       returnDays:  Number(req.body.returnDays)  || 7,
@@ -74,7 +79,9 @@ const createProduct = async (req, res) => {
   }
 };
 
-/* PUT /api/products/admin/:id */
+/* ─────────────────────────────────────────
+   PUT /api/products/admin/:id
+───────────────────────────────────────── */
 const updateProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
@@ -82,7 +89,6 @@ const updateProduct = async (req, res) => {
 
     const { name, description, price, category, brand, stock, removeImages } = req.body;
 
-    /* Images to remove */
     let currentImages = [...product.images];
     if (removeImages) {
       const toRemove = JSON.parse(removeImages);
@@ -93,13 +99,11 @@ const updateProduct = async (req, res) => {
       }
     }
 
-    /* Add new uploaded images */
     if (req.files && req.files.length > 0) {
       const newImages = req.files.map(f => f.path);
       currentImages   = [...currentImages, ...newImages];
     }
 
-    /* Max 4 images */
     if (currentImages.length > 4)
       return res.status(400).json({ message: 'Maximum 4 images allowed' });
 
@@ -115,15 +119,13 @@ const updateProduct = async (req, res) => {
     product.images      = currentImages;
     product.image       = currentImages[0];
 
-
-   /* Return policy */
-if (req.body.returnable !== undefined) {
-  product.returnPolicy = {
-    returnable:  req.body.returnable !== 'false',
-    returnDays:  Number(req.body.returnDays)  || 7,
-    description: req.body.returnDescription   || '',
-  };
-}
+    if (req.body.returnable !== undefined) {
+      product.returnPolicy = {
+        returnable:  req.body.returnable !== 'false',
+        returnDays:  Number(req.body.returnDays)  || 7,
+        description: req.body.returnDescription   || '',
+      };
+    }
 
     await product.save();
     res.json(product);
@@ -132,13 +134,14 @@ if (req.body.returnable !== undefined) {
   }
 };
 
-/* DELETE /api/products/admin/:id */
+/* ─────────────────────────────────────────
+   DELETE /api/products/admin/:id
+───────────────────────────────────────── */
 const deleteProduct = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
     if (!product) return res.status(404).json({ message: 'Product not found' });
 
-    /* Delete all images from Cloudinary */
     for (const url of product.images || []) {
       const publicId = url.split('/').slice(-2).join('/').split('.')[0];
       await cloudinary.uploader.destroy(publicId);

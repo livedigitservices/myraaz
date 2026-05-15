@@ -21,9 +21,12 @@ const SideLink = ({ to, icon, label, active }) => (
 
 const ReturnBadge = ({ status }) => {
   const map = {
-    pending:  { bg: '#FEF3C7', color: '#D97706', label: '⏳ Pending'  },
-    approved: { bg: '#D1FAE5', color: '#059669', label: '✓ Approved' },
-    rejected: { bg: '#FEE2E2', color: '#DC2626', label: '✗ Rejected' },
+    pending:          { bg: '#FEF3C7', color: '#D97706', label: '⏳ Pending'           },
+    approved:         { bg: '#D1FAE5', color: '#059669', label: '✓ Approved'           },
+    rejected:         { bg: '#FEE2E2', color: '#DC2626', label: '✗ Rejected'           },
+    refund_initiated: { bg: '#DBEAFE', color: '#2563EB', label: '🔄 Refund Processing' },
+    refund_completed: { bg: '#D1FAE5', color: '#059669', label: '✅ Refund Completed'  },
+    refund_failed:    { bg: '#FEE2E2', color: '#DC2626', label: '❌ Refund Failed'     },
   };
   const s = map[status] || map.pending;
   return (
@@ -34,51 +37,95 @@ const ReturnBadge = ({ status }) => {
   );
 };
 
+/* ── Helper: get status from a return object ──────────────────────────────
+   The backend reshapes returns so status lives at returnRequest.status.
+   We centralise this so every filter/badge reads from the same place.
+───────────────────────────────────────────────────────────────────────── */
+const getStatus = (ret) => ret?.returnRequest?.status || ret?.status || 'pending';
+
 export default function AdminReturns() {
-  const [returns, setReturns]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [filter, setFilter]       = useState('pending');
-  const [expanded, setExpanded]   = useState(null);
-  const [notes, setNotes]         = useState({});
-  const [acting, setActing]       = useState(null);
+  const [returns, setReturns]   = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [filter, setFilter]     = useState('pending');
+  const [expanded, setExpanded] = useState(null);
+  const [notes, setNotes]       = useState({});
+  const [acting, setActing]     = useState(null);
 
   useEffect(() => {
-    const fetch = async () => {
+    const loadReturns = async () => {
       try {
         const { data } = await api.get('/returns/admin');
-        setReturns(data);
-      } catch {
-        toast.error('Failed to load return requests');
+        const raw = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.returns)
+            ? data.returns
+            : [];
+        setReturns(raw);
+      } catch (err) {
+        toast.error(err?.response?.data?.message || 'Failed to load returns');
       } finally {
         setLoading(false);
       }
     };
-    fetch();
+    loadReturns();
   }, []);
 
-  const handleAction = async (orderId, status) => {
+  /* ── Approve / Reject ── */
+  const handleAction = async (returnId, status) => {
     try {
-      setActing(orderId + status);
-      const { data } = await api.put(`/returns/admin/${orderId}`, {
+      setActing(returnId + status);
+      const { data } = await api.put(`/returns/admin/${returnId}`, {
         status,
-        adminNote: notes[orderId] || '',
+        adminNote: notes[returnId] || '',
       });
-      setReturns(prev => prev.map(o =>
-        o._id === orderId ? data.order : o
-      ));
-      toast.success(`Return ${status} ✅`);
+
+      /* Re-fetch all returns so the reshaped data stays consistent */
+      const { data: refreshed } = await api.get('/returns/admin');
+      const raw = Array.isArray(refreshed)
+        ? refreshed
+        : Array.isArray(refreshed?.returns)
+          ? refreshed.returns
+          : [];
+      setReturns(raw);
+
+      toast.success(data?.message || `Return ${status}`);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update');
+      toast.error(err?.response?.data?.message || 'Failed to update');
     } finally {
       setActing(null);
     }
   };
 
+  /* ── Filter — use getStatus() consistently ── */
   const filtered = filter === 'all'
     ? returns
-    : returns.filter(o => o.returnRequest?.status === filter);
+    : returns.filter(r => getStatus(r) === filter);
 
-  const pendingCount = returns.filter(o => o.returnRequest?.status === 'pending').length;
+  const countFor = (key) =>
+    key === 'all'
+      ? returns.length
+      : returns.filter(r => getStatus(r) === key).length;
+
+  const pendingCount = countFor('pending');
+
+  /* ── Refund info text ── */
+  const getRefundInfo = (ret) => {
+    const pm = ret.paymentMethod;
+    if (pm === 'Razorpay')
+      return '💳 Razorpay will automatically refund to their original UPI/Card/Netbanking. No manual action needed. (5-7 days)';
+    if (pm === 'Stripe')
+      return '🌍 Stripe will automatically refund to their original card. No manual action needed. (5-10 days)';
+    if (pm === 'Wallet')
+      return '👛 Amount will be credited back to their myRaaz wallet instantly.';
+    if (pm === 'COD') {
+      if (ret.refundMethod === 'upi')
+        return `💸 ₹${ret.refundAmount} will be sent to UPI: ${ret.upiId}`;
+      if (ret.refundMethod === 'bank')
+        return '🏦 Manual bank transfer required. See bank details below.';
+      return '👛 Amount will be credited to their myRaaz wallet.';
+    }
+    return '👛 Amount will be credited to their myRaaz wallet.';
+  };
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-cream)' }}>
@@ -91,9 +138,7 @@ export default function AdminReturns() {
           <p className="text-xs font-semibold uppercase tracking-widest"
              style={{ color: 'var(--color-muted)' }}>Admin Panel</p>
           <p className="text-base font-semibold mt-0.5"
-             style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
-            myRaaz
-          </p>
+             style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>myRaaz</p>
         </div>
         <SideLink to="/admin"          icon={<FiTrendingUp size={16} />}   label="Dashboard"       />
         <SideLink to="/admin/products" icon={<FiBox size={16} />}          label="Products"        />
@@ -135,10 +180,11 @@ export default function AdminReturns() {
         {/* Filter tabs */}
         <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
           {[
-            { key: 'pending',  label: 'Pending'  },
-            { key: 'approved', label: 'Approved' },
-            { key: 'rejected', label: 'Rejected' },
-            { key: 'all',      label: 'All'      },
+            { key: 'pending',          label: 'Pending'   },
+            { key: 'refund_completed', label: 'Completed' },
+            { key: 'rejected',         label: 'Rejected'  },
+            { key: 'refund_failed',    label: 'Failed'    },
+            { key: 'all',              label: 'All'       },
           ].map(({ key, label }) => (
             <button key={key} onClick={() => setFilter(key)}
               className="px-4 py-1.5 rounded-full text-xs font-medium transition-all shrink-0"
@@ -146,9 +192,7 @@ export default function AdminReturns() {
                 backgroundColor: filter === key ? 'var(--color-primary)' : 'var(--color-soft)',
                 color: filter === key ? 'white' : 'var(--color-muted)',
               }}>
-              {label} ({key === 'all'
-                ? returns.length
-                : returns.filter(o => o.returnRequest?.status === key).length})
+              {label} ({countFor(key)})
             </button>
           ))}
         </div>
@@ -177,57 +221,72 @@ export default function AdminReturns() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filtered.map(order => {
-              const ret        = order.returnRequest;
-              const isExpanded = expanded === order._id;
-              const isPending  = ret.status === 'pending';
+            {filtered.map(ret => {
+              const status     = getStatus(ret);
+              const isExpanded = expanded === ret._id;
+              const isPending  = status === 'pending';
 
               return (
-                <div key={order._id} className="bg-white rounded-2xl overflow-hidden"
+                <div key={ret._id} className="bg-white rounded-2xl overflow-hidden"
                      style={{ boxShadow: 'var(--shadow-card)' }}>
 
                   {/* Card header */}
                   <div className="flex items-center justify-between p-5 cursor-pointer
                                   hover:bg-soft/30 transition-colors gap-4"
-                       onClick={() => setExpanded(isExpanded ? null : order._id)}>
+                       onClick={() => setExpanded(isExpanded ? null : ret._id)}>
                     <div className="flex items-center gap-3 min-w-0">
                       {/* Thumbnails */}
                       <div className="flex -space-x-2 shrink-0">
-                        {order.orderItems?.slice(0, 2).map((item, i) => (
+                        {(ret.orderItems || ret.returnItems || []).slice(0, 2).map((item, i) => (
                           <div key={i} className="w-11 h-11 rounded-xl overflow-hidden
                                                    border-2 border-white"
                                style={{ backgroundColor: 'var(--color-soft)' }}>
-                            <img src={item.image} className="w-full h-full object-cover" />
+                            {item.image
+                              ? <img src={item.image} alt={item.name}
+                                     className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center">
+                                  <FiPackage size={14} style={{ color: 'var(--color-muted)' }} />
+                                </div>
+                            }
                           </div>
                         ))}
                       </div>
+
                       <div className="min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-0.5">
                           <span className="font-mono text-xs font-semibold"
                                 style={{ color: 'var(--color-dark)' }}>
-                            #{order._id.slice(-8).toUpperCase()}
+                            #{ret._id.slice(-8).toUpperCase()}
                           </span>
-                          <ReturnBadge status={ret.status} />
+                          <ReturnBadge status={status} />
+                          {ret.requiresManualReview && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                              ⚠️ Review
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm font-medium truncate"
                            style={{ color: 'var(--color-dark)' }}>
-                          {order.user?.name}
+                          {ret.user?.name}
                         </p>
                         <p className="text-xs truncate" style={{ color: 'var(--color-muted)' }}>
-                          {order.user?.email || order.user?.phone}
+                          {ret.user?.email || ret.user?.phone}
                         </p>
                       </div>
                     </div>
+
                     <div className="flex items-center gap-3 shrink-0">
                       <div className="text-right">
                         <p className="text-base font-semibold"
                            style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-primary)' }}>
-                          ₹{order.totalPrice?.toLocaleString('en-IN')}
+                          ₹{ret.refundAmount?.toLocaleString('en-IN') || '—'}
                         </p>
                         <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                          {new Date(ret.requestedAt).toLocaleDateString('en-IN', {
-                            day: 'numeric', month: 'short', year: 'numeric'
-                          })}
+                          {ret.returnRequest?.requestedAt
+                            ? new Date(ret.returnRequest.requestedAt).toLocaleDateString('en-IN', {
+                                day: 'numeric', month: 'short', year: 'numeric',
+                              })
+                            : '—'}
                         </p>
                       </div>
                       {isExpanded
@@ -236,91 +295,186 @@ export default function AdminReturns() {
                     </div>
                   </div>
 
-                  {/* Expanded */}
+                  {/* Expanded panel */}
                   {isExpanded && (
                     <div className="px-5 pb-5 space-y-4"
                          style={{ borderTop: '1px solid var(--color-soft)' }}>
 
                       {/* Return reason */}
-                      <div className="pt-2">
+                      <div className="pt-3">
                         <p className="text-xs font-semibold uppercase tracking-widest mb-1"
                            style={{ color: 'var(--color-muted)' }}>Return Reason</p>
                         <p className="text-sm font-medium"
-                           style={{ color: 'var(--color-dark)' }}>{ret.reason}</p>
+                           style={{ color: 'var(--color-dark)' }}>
+                          {ret.returnRequest?.reason || '—'}
+                        </p>
                       </div>
 
-                      {/* Returnable vs non-returnable items */}
-                      {ret.returnableItems?.length > 0 && (
-                        <div className="p-3 rounded-xl"
-                             style={{ backgroundColor: '#F0FDF4' }}>
+                      {/* Returnable items */}
+                      {ret.returnRequest?.returnableItems?.length > 0 && (
+                        <div className="p-3 rounded-xl" style={{ backgroundColor: '#F0FDF4' }}>
                           <p className="text-xs font-semibold text-green-700 mb-1">
-                            ✓ Returnable Items
+                            ✓ Items Being Returned
                           </p>
-                          {ret.returnableItems.map((name, i) => (
-                            <p key={i} className="text-xs text-green-600">• {name}</p>
+                          {ret.returnRequest.returnableItems.map((name, i) => (
+                            <p key={i} className="text-xs text-green-700">• {name}</p>
                           ))}
                         </div>
                       )}
-                      {ret.nonReturnableItems?.length > 0 && (
-                        <div className="p-3 rounded-xl"
-                             style={{ backgroundColor: '#FEF2F2' }}>
+
+                      {/* Non-returnable items */}
+                      {ret.returnRequest?.nonReturnableItems?.length > 0 && (
+                        <div className="p-3 rounded-xl" style={{ backgroundColor: '#FEF2F2' }}>
                           <p className="text-xs font-semibold text-red-600 mb-1">
                             ✗ Non-returnable Items
                           </p>
-                          {ret.nonReturnableItems.map((name, i) => (
+                          {ret.returnRequest.nonReturnableItems.map((name, i) => (
                             <p key={i} className="text-xs text-red-500">• {name}</p>
                           ))}
                         </div>
                       )}
 
                       {/* Order items */}
-                      <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-widest"
-                           style={{ color: 'var(--color-muted)' }}>All Items in Order</p>
-                        {order.orderItems?.map((item, i) => (
-                          <div key={i} className="flex items-center gap-3 p-3 rounded-xl"
-                               style={{ backgroundColor: 'var(--color-soft)' }}>
-                            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0"
-                                 style={{ backgroundColor: 'white' }}>
-                              <img src={item.image} className="w-full h-full object-cover" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium line-clamp-1"
-                                 style={{ color: 'var(--color-dark)' }}>{item.name}</p>
-                              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                                Qty: {item.quantity} · ₹{item.price}
+                      {ret.orderItems?.length > 0 && (
+                        <div className="p-3 rounded-xl"
+                             style={{ backgroundColor: 'var(--color-soft)' }}>
+                          <p className="text-xs font-semibold uppercase tracking-widest mb-2"
+                             style={{ color: 'var(--color-muted)' }}>Order Items</p>
+                          {ret.orderItems.map((item, i) => (
+                            <div key={i} className="flex items-center gap-2 mb-1">
+                              <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-white">
+                                {item.image
+                                  ? <img src={item.image} className="w-full h-full object-cover" />
+                                  : <FiBox size={14} className="m-auto mt-2"
+                                           style={{ color: 'var(--color-muted)' }} />
+                                }
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-medium line-clamp-1"
+                                   style={{ color: 'var(--color-dark)' }}>{item.name}</p>
+                                <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                                  Qty: {item.quantity} · ₹{item.price}
+                                </p>
+                              </div>
+                              <p className="text-xs font-semibold shrink-0"
+                                 style={{ color: 'var(--color-primary)' }}>
+                                ₹{(item.price * item.quantity).toLocaleString('en-IN')}
                               </p>
                             </div>
-                            <p className="text-sm font-semibold shrink-0"
-                               style={{ color: 'var(--color-primary)',
-                                        fontFamily: 'var(--font-serif)' }}>
-                              ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Refund info */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="p-3 rounded-xl text-center"
+                             style={{ backgroundColor: 'var(--color-soft)' }}>
+                          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                            Refund Amount
+                          </p>
+                          <p className="text-lg font-semibold"
+                             style={{ fontFamily: 'var(--font-serif)',
+                                      color: 'var(--color-primary)' }}>
+                            ₹{ret.refundAmount?.toLocaleString('en-IN') || '—'}
+                          </p>
+                          {ret.partialRefund && (
+                            <p className="text-xs text-amber-600">Partial Refund</p>
+                          )}
+                        </div>
+                        <div className="p-3 rounded-xl text-center"
+                             style={{ backgroundColor: 'var(--color-soft)' }}>
+                          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                            Payment Method
+                          </p>
+                          <p className="text-sm font-semibold capitalize"
+                             style={{ color: 'var(--color-dark)' }}>
+                            {ret.paymentMethod || '—'}
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                            via {ret.refundMethod || 'wallet'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Customer address */}
+                      {ret.shippingAddress && (
+                        <div className="p-3 rounded-xl"
+                             style={{ backgroundColor: 'var(--color-soft)' }}>
+                          <p className="text-xs font-semibold uppercase tracking-widest mb-1"
+                             style={{ color: 'var(--color-muted)' }}>Customer Address</p>
+                          <p className="text-sm font-medium"
+                             style={{ color: 'var(--color-dark)' }}>
+                            {ret.shippingAddress?.fullName}
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                            📱 {ret.shippingAddress?.phone}
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                            {ret.shippingAddress?.address}, {ret.shippingAddress?.city},{' '}
+                            {ret.shippingAddress?.state} — {ret.shippingAddress?.pincode}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Fraud flags */}
+                      {ret.requiresManualReview && ret.fraudFlags?.length > 0 && (
+                        <div className="p-3 rounded-xl" style={{ backgroundColor: '#FEF3C7' }}>
+                          <p className="text-xs font-semibold text-amber-700 mb-1">
+                            ⚠️ Fraud Flags — Manual Review Required
+                          </p>
+                          {ret.fraudFlags.map((flag, i) => (
+                            <p key={i} className="text-xs text-amber-600">
+                              • {flag.reason}
+                            </p>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* COD bank details */}
+                      {ret.paymentMethod === 'COD' && ret.bankDetails?.accountNumber && (
+                        <div className="p-3 rounded-xl"
+                             style={{ backgroundColor: 'var(--color-soft)' }}>
+                          <p className="text-xs font-semibold uppercase tracking-widest mb-2"
+                             style={{ color: 'var(--color-muted)' }}>Bank Details for Refund</p>
+                          <p className="text-sm font-medium" style={{ color: 'var(--color-dark)' }}>
+                            {ret.bankDetails.accountName}
+                          </p>
+                          <p className="text-xs font-mono mt-0.5"
+                             style={{ color: 'var(--color-muted)' }}>
+                            Account: {ret.bankDetails.accountNumber}
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                            IFSC: {ret.bankDetails.ifsc}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* COD UPI */}
+                      {ret.paymentMethod === 'COD' && ret.upiId && (
+                        <div className="p-3 rounded-xl"
+                             style={{ backgroundColor: 'var(--color-soft)' }}>
+                          <p className="text-xs font-semibold uppercase tracking-widest mb-1"
+                             style={{ color: 'var(--color-muted)' }}>UPI ID for Refund</p>
+                          <p className="text-sm font-mono font-medium"
+                             style={{ color: 'var(--color-dark)' }}>{ret.upiId}</p>
+                        </div>
+                      )}
+
+                      {/* ── PENDING ACTIONS ── */}
+                      {isPending && (
+                        <div className="space-y-3 pt-1">
+                          <div className="p-4 rounded-xl"
+                               style={{ backgroundColor: 'var(--color-soft)' }}>
+                            <p className="text-xs font-semibold uppercase tracking-widest mb-2"
+                               style={{ color: 'var(--color-muted)' }}>
+                              What happens when you approve
+                            </p>
+                            <p className="text-xs leading-relaxed"
+                               style={{ color: 'var(--color-dark)' }}>
+                              {getRefundInfo(ret)}
                             </p>
                           </div>
-                        ))}
-                      </div>
 
-                      {/* Shipping address */}
-                      <div className="p-3 rounded-xl"
-                           style={{ backgroundColor: 'var(--color-soft)' }}>
-                        <p className="text-xs font-semibold uppercase tracking-widest mb-1"
-                           style={{ color: 'var(--color-muted)' }}>Customer Address</p>
-                        <p className="text-sm font-medium"
-                           style={{ color: 'var(--color-dark)' }}>
-                          {order.shippingAddress?.fullName}
-                        </p>
-                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                          📱 {order.shippingAddress?.phone}
-                        </p>
-                        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                          {order.shippingAddress?.address}, {order.shippingAddress?.city},
-                          {' '}{order.shippingAddress?.state} — {order.shippingAddress?.pincode}
-                        </p>
-                      </div>
-
-                      {/* Admin action — pending only */}
-                      {isPending && (
-                        <div className="space-y-3 pt-2">
                           <div>
                             <label className="block text-xs font-medium mb-1.5"
                                    style={{ color: 'var(--color-dark)' }}>
@@ -328,68 +482,73 @@ export default function AdminReturns() {
                             </label>
                             <input
                               type="text"
-                              value={notes[order._id] || ''}
-                              onChange={e => setNotes(n => ({
-                                ...n, [order._id]: e.target.value
-                              }))}
-                              placeholder="e.g. Please ship the product to our warehouse..."
+                              value={notes[ret._id] || ''}
+                              onChange={e => setNotes(n => ({ ...n, [ret._id]: e.target.value }))}
+                              placeholder="e.g. Please ship the product back within 3 days..."
                               className="input text-sm"
                             />
                           </div>
+
                           <div className="flex gap-3">
                             <button
-                              onClick={() => handleAction(order._id, 'approved')}
+                              onClick={() => handleAction(ret._id, 'approved')}
                               disabled={!!acting}
-                              className="flex-1 flex items-center justify-center gap-2
-                                         py-3 rounded-xl text-sm font-medium text-white
+                              className="flex-1 flex items-center justify-center gap-2 py-3
+                                         rounded-xl text-sm font-medium text-white
                                          transition-all hover:opacity-90 disabled:opacity-50"
                               style={{ backgroundColor: '#059669' }}>
-                              {acting === order._id + 'approved' ? (
-                                <>
-                                  <svg className="animate-spin h-4 w-4" fill="none"
-                                       viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor"
-                                          d="M4 12a8 8 0 018-8v8z" />
-                                  </svg>
-                                  Approving...
-                                </>
-                              ) : <><FiCheck size={15} /> Approve Return</>}
+                              {acting === ret._id + 'approved' ? (
+                                <><svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10"
+                                          stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                </svg> Processing Refund...</>
+                              ) : (
+                                <><FiCheck size={15} /> Approve & Refund ₹{ret.refundAmount?.toLocaleString('en-IN')}</>
+                              )}
                             </button>
                             <button
-                              onClick={() => handleAction(order._id, 'rejected')}
+                              onClick={() => handleAction(ret._id, 'rejected')}
                               disabled={!!acting}
-                              className="flex-1 flex items-center justify-center gap-2
-                                         py-3 rounded-xl text-sm font-medium text-white
+                              className="flex items-center justify-center gap-2 px-5 py-3
+                                         rounded-xl text-sm font-medium text-white
                                          transition-all hover:opacity-90 disabled:opacity-50"
                               style={{ backgroundColor: '#DC2626' }}>
-                              {acting === order._id + 'rejected' ? (
-                                <>
-                                  <svg className="animate-spin h-4 w-4" fill="none"
-                                       viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10"
-                                            stroke="currentColor" strokeWidth="4" />
-                                    <path className="opacity-75" fill="currentColor"
-                                          d="M4 12a8 8 0 018-8v8z" />
-                                  </svg>
-                                  Rejecting...
-                                </>
-                              ) : <><FiX size={15} /> Reject Return</>}
+                              {acting === ret._id + 'rejected' ? (
+                                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10"
+                                          stroke="currentColor" strokeWidth="4" />
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                                </svg>
+                              ) : (
+                                <><FiX size={15} /> Reject</>
+                              )}
                             </button>
                           </div>
                         </div>
                       )}
 
-                      {/* Show admin note if resolved */}
-                      {!isPending && ret.adminNote && (
-                        <div className="p-3 rounded-xl"
-                             style={{ backgroundColor: 'var(--color-soft)' }}>
-                          <p className="text-xs font-semibold uppercase tracking-widest mb-1"
-                             style={{ color: 'var(--color-muted)' }}>Admin Note</p>
-                          <p className="text-sm" style={{ color: 'var(--color-dark)' }}>
-                            {ret.adminNote}
-                          </p>
+                      {/* ── RESOLVED ── */}
+                      {!isPending && (
+                        <div className="space-y-3">
+                          {ret.returnRequest?.adminNote && (
+                            <div className="p-3 rounded-xl"
+                                 style={{ backgroundColor: 'var(--color-soft)' }}>
+                              <p className="text-xs font-semibold uppercase tracking-widest mb-1"
+                                 style={{ color: 'var(--color-muted)' }}>Admin Note</p>
+                              <p className="text-sm" style={{ color: 'var(--color-dark)' }}>
+                                {ret.returnRequest.adminNote}
+                              </p>
+                            </div>
+                          )}
+                          {ret.returnRequest?.requestedAt && (
+                            <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                              Requested on {new Date(ret.returnRequest.requestedAt)
+                                .toLocaleDateString('en-IN', {
+                                  day: 'numeric', month: 'short', year: 'numeric',
+                                })}
+                            </p>
+                          )}
                         </div>
                       )}
 

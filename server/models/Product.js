@@ -36,7 +36,6 @@ const productSchema = new mongoose.Schema(
       required: [true, 'Brand is required'],
       trim:     true,
     },
-    /* ── Multiple images (max 4) ── */
     images: {
       type:     [String],
       required: true,
@@ -45,12 +44,9 @@ const productSchema = new mongoose.Schema(
         message:   'Product must have 1 to 4 images',
       },
     },
-
-    /* Keep image as alias for first image (backward compat) */
     image: {
       type: String,
     },
-
     stock: {
       type:    Number,
       default: 0,
@@ -60,23 +56,20 @@ const productSchema = new mongoose.Schema(
     numReviews: { type: Number, default: 0 },
     reviews:    [reviewSchema],
     isFeatured: { type: Boolean, default: false },
-    
     returnPolicy: {
-  returnable:  { type: Boolean, default: true  },
-  returnDays:  { type: Number,  default: 7     },
-  description: { type: String,  default: ''    },
-},
+      returnable:  { type: Boolean, default: true },
+      returnDays:  { type: Number,  default: 7    },
+      description: { type: String,  default: ''   },
+    },
   },
-  
   { timestamps: true }
 );
 
-/* Auto-set image to first of images array */
-productSchema.pre('save', function (next) {
+
+productSchema.pre('save', async function () {
   if (this.images?.length > 0) {
     this.image = this.images[0];
   }
-  // next();
 });
 
 productSchema.index({ name: 'text', description: 'text', brand: 'text' });
