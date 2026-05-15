@@ -88,71 +88,64 @@ const UPIButton = ({ amount, orderId, upiApp, onSuccess }) => {
         amount: Number(amount),
       });
 
-
-
-
       const options = {
-  key:         data.keyId,
-  amount:      data.amount,
-  currency:    data.currency,
-  name:        'myRaaz',
-  description: 'Hair Care Products',
-  order_id:    data.orderId,
-  prefill: {
-    name:    userInfo?.name  || '',
-    email:   userInfo?.email || '',
-    contact: userInfo?.phone?.replace('+91', '') || '',
-  },
-  theme: { color: '#7C6A5E' },
-
-  config: {
-  display: {
-    blocks: {
-      upi: {
-        name: 'Pay via UPI',
-        instruments: [
-          { method: 'upi', flows: ['intent'],  apps: [upiApp] }, // mobile app
-          { method: 'upi', flows: ['qr']                      }, // desktop QR
-          { method: 'upi', flows: ['collect']                 }, // UPI ID input
-        ],
-      },
-      other: {
-        name: 'Other Payment Methods',
-        instruments: [
-          { method: 'card' },
-          { method: 'netbanking' },
-        ],
-      },
-    },
-    sequence:    ['block.upi', 'block.other'],
-    preferences: { show_default_blocks: false },
-  },
-},
-
-  modal: {
-    ondismiss: () => {
-      setLoading(false);
-      toast.info('Payment cancelled');
-    },
-  },
-  handler: async (response) => {
-    try {
-      await api.post('/payment/razorpay/verify', {
-        razorpay_order_id:   response.razorpay_order_id,
-        razorpay_payment_id: response.razorpay_payment_id,
-        razorpay_signature:  response.razorpay_signature,
-        orderId,
-      });
-      onSuccess();
-    } catch {
-      toast.error('Payment verification failed. Contact support.');
-    } finally {
-      setLoading(false);
-    }
-  },
-};
-
-
+        key:         data.keyId,
+        amount:      data.amount,
+        currency:    data.currency,
+        name:        'myRaaz',
+        description: 'Hair Care Products',
+        order_id:    data.orderId,
+        prefill: {
+          name:    userInfo?.name  || '',
+          email:   userInfo?.email || '',
+          contact: userInfo?.phone?.replace('+91', '') || '',
+        },
+        theme: { color: '#7C6A5E' },
+        config: {
+          display: {
+            blocks: {
+              upi: {
+                name: 'Pay via UPI',
+                instruments: [
+                  { method: 'upi', flows: ['intent'],  apps: [upiApp] },
+                  { method: 'upi', flows: ['qr'] },
+                  { method: 'upi', flows: ['collect'] },
+                ],
+              },
+              other: {
+                name: 'Other Payment Methods',
+                instruments: [
+                  { method: 'card' },
+                  { method: 'netbanking' },
+                ],
+              },
+            },
+            sequence:    ['block.upi', 'block.other'],
+            preferences: { show_default_blocks: false },
+          },
+        },
+        modal: {
+          ondismiss: () => {
+            setLoading(false);
+            toast.info('Payment cancelled');
+          },
+        },
+        handler: async (response) => {
+          try {
+            await api.post('/payment/razorpay/verify', {
+              razorpay_order_id:   response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature:  response.razorpay_signature,
+              orderId,
+            });
+            onSuccess();
+          } catch {
+            toast.error('Payment verification failed. Contact support.');
+          } finally {
+            setLoading(false);
+          }
+        },
+      };
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', (r) => {
@@ -435,14 +428,14 @@ function CheckoutContent() {
   const [upiApp, setUpiApp]   = useState('gpay');
   const [walletBalance, setWalletBalance] = useState(0);
 
+  // ── Fetch wallet balance ───────────────────────────────────────────────
   useEffect(() => {
-  if (userInfo) {
-    api.get('/returns/wallet')
-      .then(({ data }) => setWalletBalance(data.balance || 0))
-      .catch(() => {});
-  }
-}, [userInfo]);
-
+    if (userInfo) {
+      api.get('/wallet')                          // ✅ correct endpoint
+        .then(({ data }) => setWalletBalance(data.balance ?? 0))
+        .catch(() => setWalletBalance(0));
+    }
+  }, [userInfo]);
 
   const [address, setAddress] = useState({
     fullName: userInfo?.name  || '',
@@ -467,6 +460,7 @@ function CheckoutContent() {
     return true;
   };
 
+  // ── Place order (creates DB record + handles wallet deduction on backend) ──
   const placeOrder = async (method = payment) => {
     const { data } = await api.post('/orders', {
       orderItems: cartItems.map(i => ({
@@ -484,7 +478,7 @@ function CheckoutContent() {
         state:    address.state,
         pincode:  address.pincode,
       },
-      paymentMethod: method === 'UPI' ? 'Razorpay' : method,
+      paymentMethod: method === 'UPI' ? 'Razorpay' : method,   // UPI uses Razorpay gateway
       itemsPrice:    totalPrice,
       shippingPrice: shipping,
       totalPrice:    grandTotal,
@@ -501,11 +495,13 @@ function CheckoutContent() {
     }
 
     if (step === 1) {
-      if (payment === 'COD') {
+      // COD & Wallet go straight to review — no pre-order needed
+      if (payment === 'COD' || payment === 'Wallet') {
         setStep(2);
         window.scrollTo(0, 0);
         return;
       }
+      // Gateway payments: create order first so orderId is ready on review screen
       try {
         setLoading(true);
         toast.info('Creating your order...');
@@ -521,6 +517,7 @@ function CheckoutContent() {
     }
   };
 
+  // ── COD ──────────────────────────────────────────────────────────────
   const handleCOD = async () => {
     try {
       setLoading(true);
@@ -536,6 +533,7 @@ function CheckoutContent() {
     }
   };
 
+  // ── Gateway success callback ──────────────────────────────────────────
   const handlePaymentSuccess = () => {
     clearCart();
     setPlaced(true);
@@ -543,24 +541,28 @@ function CheckoutContent() {
     window.scrollTo(0, 0);
   };
 
+  // ── Wallet ────────────────────────────────────────────────────────────
+  // The orderController already deducts the wallet balance when paymentMethod === 'Wallet'.
+  // So we just call placeOrder() — NO separate /payment/wallet call needed.
   const handleWalletPay = async () => {
-  if (walletBalance < grandTotal)
-    return toast.error(`Insufficient wallet balance. Available: ₹${walletBalance}`);
-  try {
-    setLoading(true);
-    const id = await placeOrder('Wallet');
-    await api.post('/payment/wallet', { orderId: id });
-    setOrderId(id);
-    clearCart();
-    setPlaced(true);
-  } catch (err) {
-    toast.error(err.response?.data?.message || 'Wallet payment failed');
-  } finally {
-    setLoading(false);
-  }
-};
-
-
+    if (walletBalance < grandTotal) {
+      return toast.error(
+        `Insufficient wallet balance. Available: ₹${walletBalance.toLocaleString('en-IN')}`
+      );
+    }
+    try {
+      setLoading(true);
+      const id = await placeOrder('Wallet');   // backend deducts balance here ✅
+      setOrderId(id);
+      clearCart();
+      setPlaced(true);
+      window.scrollTo(0, 0);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Wallet payment failed');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   /* ── Success screen ── */
   if (placed) return (
@@ -759,7 +761,7 @@ function CheckoutContent() {
                     onClick={() => setPayment('Stripe')}
                   />
 
-                  {/* ── Wallet ── */}
+                  {/* Wallet */}
                   <PaymentOption
                     value="Wallet"
                     label="myRaaz Wallet"
@@ -769,10 +771,10 @@ function CheckoutContent() {
                     onClick={() => setPayment('Wallet')}
                   />
 
-                  {/* Wallet balance info — only when Wallet selected */}
+                  {/* Wallet balance info — shown when Wallet is selected */}
                   {payment === 'Wallet' && (
                     <div className="p-3 rounded-xl"
-                        style={{ backgroundColor: 'var(--color-soft)' }}>
+                         style={{ backgroundColor: 'var(--color-soft)' }}>
                       <div className="flex justify-between items-center text-sm">
                         <span style={{ color: 'var(--color-muted)' }}>Wallet balance</span>
                         <span className="font-semibold"
@@ -800,23 +802,13 @@ function CheckoutContent() {
                   )}
                 </div>
 
-              {/* Method info */}
-              <div className="mt-4 p-3 rounded-xl text-xs"
-                  style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-muted)' }}>
-                {payment === 'COD'      && '💵 Pay with cash when your order arrives.'}
-                {payment === 'UPI'      && '📱 Click Continue — your selected UPI app will open on the next screen.'}
-                {payment === 'Razorpay' && '🇮🇳 Click Continue — Razorpay checkout will open on the next screen.'}
-                {payment === 'Stripe'   && '🌍 Click Continue — Enter your card details on the next screen.'}
-                {payment === 'Wallet'   && '👛 Click Continue — Payment will be deducted from your wallet instantly.'}
-              </div>
-
-                {/* Method-specific info */}
                 <div className="mt-4 p-3 rounded-xl text-xs"
                      style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-muted)' }}>
                   {payment === 'COD'      && '💵 Pay with cash when your order arrives. No prepayment required.'}
                   {payment === 'UPI'      && '📱 Click Continue — your selected UPI app will open on the next screen.'}
                   {payment === 'Razorpay' && '🇮🇳 Click Continue — Razorpay checkout will open on the next screen.'}
                   {payment === 'Stripe'   && '🌍 Click Continue — Enter your card details on the next screen.'}
+                  {payment === 'Wallet'   && '👛 Click Continue — Payment will be deducted from your wallet instantly.'}
                 </div>
               </div>
             )}
@@ -884,9 +876,10 @@ function CheckoutContent() {
                     })()}
                     {payment !== 'UPI' && (
                       <p className="text-sm font-medium" style={{ color: 'var(--color-dark)' }}>
-                        {payment === 'COD'      ? '💵 Cash on Delivery'
-                          : payment === 'Razorpay' ? '🇮🇳 Razorpay'
-                          : '🌍 Stripe'}
+                        {payment === 'COD'    ? '💵 Cash on Delivery'
+                        : payment === 'Wallet'  ? '👛 myRaaz Wallet'
+                        : payment === 'Razorpay' ? '🇮🇳 Razorpay'
+                        : '🌍 Stripe'}
                       </p>
                     )}
                   </div>
@@ -983,7 +976,7 @@ function CheckoutContent() {
             )}
 
             {/* ── NAV BUTTONS ── */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               {step > 0 && (
                 <button
                   onClick={() => { setStep(s => s - 1); setOrderId(null); }}
@@ -996,7 +989,7 @@ function CheckoutContent() {
               {step < 2 && (
                 <button
                   onClick={handleNext}
-                  disabled={loading}
+                  disabled={loading || (payment === 'Wallet' && walletBalance < grandTotal)}
                   className="flex-1 flex items-center justify-center gap-2 py-3.5
                              rounded-full text-white text-sm font-medium
                              transition-all hover:opacity-90 disabled:opacity-60"
@@ -1004,23 +997,6 @@ function CheckoutContent() {
                   {loading ? <><Spin /> Preparing order...</> : 'Continue →'}
                 </button>
               )}
-              {payment === 'Wallet' && (
-  <div className="mt-3 p-3 rounded-xl text-sm"
-       style={{ backgroundColor: 'var(--color-soft)' }}>
-    <div className="flex justify-between items-center">
-      <span style={{ color: 'var(--color-muted)' }}>Available balance</span>
-      <span className="font-semibold"
-            style={{ color: walletBalance >= grandTotal ? '#059669' : '#ef4444' }}>
-        ₹{walletBalance.toLocaleString('en-IN')}
-      </span>
-    </div>
-    {walletBalance < grandTotal && (
-      <p className="text-xs mt-1 text-red-500">
-        Insufficient balance. Need ₹{(grandTotal - walletBalance).toLocaleString('en-IN')} more.
-      </p>
-    )}
-  </div>
-)}
 
               {step === 2 && payment === 'COD' && (
                 <button
@@ -1035,14 +1011,18 @@ function CheckoutContent() {
               )}
 
               {step === 2 && payment === 'Wallet' && (
-  <button onClick={handleWalletPay} disabled={loading || walletBalance < grandTotal}
-    className="flex-1 flex items-center justify-center gap-2 py-3.5
-               rounded-full text-white text-sm font-medium transition-all
-               hover:opacity-90 disabled:opacity-60"
-    style={{ backgroundColor: 'var(--color-primary)' }}>
-    {loading ? <><Spin /> Processing...</> : <>👛 Pay ₹{grandTotal.toLocaleString('en-IN')}</>}
-  </button>
-)}
+                <button
+                  onClick={handleWalletPay}
+                  disabled={loading || walletBalance < grandTotal}
+                  className="flex-1 flex items-center justify-center gap-2 py-3.5
+                             rounded-full text-white text-sm font-medium transition-all
+                             hover:opacity-90 disabled:opacity-60"
+                  style={{ backgroundColor: 'var(--color-primary)' }}>
+                  {loading
+                    ? <><Spin /> Processing...</>
+                    : <>👛 Pay ₹{grandTotal.toLocaleString('en-IN')} via Wallet</>}
+                </button>
+              )}
             </div>
           </div>
 

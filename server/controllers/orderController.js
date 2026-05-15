@@ -2,6 +2,7 @@ const Order   = require('../models/Order.js');
 const Product = require('../models/Product');
 const Coupon  = require('../models/Coupon');
 const User    = require('../models/User');
+const Wallet  = require('../models/Wallet');
 
 /* ─────────────────────────────────────────
    POST /api/orders
@@ -17,11 +18,12 @@ const placeOrder = async (req, res) => {
     if (!orderItems || orderItems.length === 0)
       return res.status(400).json({ message: 'No items in order' });
 
+    // ── 1. Decrement stock atomically ──────────────────────────────────
     for (const item of orderItems) {
       const updated = await Product.findOneAndUpdate(
         { _id: item.product, stock: { $gte: item.quantity } },
         { $inc: { stock: -item.quantity } },
-        {  returnDocument: 'after' }
+        { returnDocument: 'after' }
       );
 
       if (!updated) {
@@ -35,12 +37,45 @@ const placeOrder = async (req, res) => {
       }
     }
 
+    // ── 2. Handle Wallet payment ───────────────────────────────────────
+    let isPaid    = false;
+    let paidAt    = undefined;
+    let paymentResult = undefined;
+
+    if (paymentMethod === 'Wallet') {
+      const wallet = await Wallet.findOne({ user: req.user._id });
+
+      if (!wallet || wallet.balance < totalPrice) {
+        // Rollback stock decrements
+        for (const item of orderItems) {
+          await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
+        }
+        return res.status(400).json({ message: 'Insufficient wallet balance' });
+      }
+
+      wallet.balance -= totalPrice;
+      wallet.transactions.push({
+        type:        'debit',
+        amount:      totalPrice,
+        description: 'Order payment via Wallet',
+        status:      'completed',
+      });
+      await wallet.save();
+
+      isPaid    = true;
+      paidAt    = new Date();
+      paymentResult = { id: `WALLET-${Date.now()}`, status: 'completed' };
+    }
+
+    // ── 3. Create order ────────────────────────────────────────────────
     const order = await Order.create({
       user: req.user._id,
       orderItems, shippingAddress, paymentMethod,
       itemsPrice, shippingPrice, totalPrice, coupon,
+      isPaid, paidAt, paymentResult,
     });
 
+    // ── 4. Post-order cleanup (non-critical) ───────────────────────────
     try {
       await User.findByIdAndUpdate(req.user._id, { $set: { cart: [] } });
 
@@ -51,7 +86,7 @@ const placeOrder = async (req, res) => {
         );
       }
     } catch (_) {
-      // intentionally swallowed
+      // intentionally swallowed — order already created
     }
 
     res.status(201).json(order);
@@ -133,22 +168,25 @@ const updateOrderStatus = async (req, res) => {
 
     order.status = nextStatus;
 
+    // ── Mark as delivered ──────────────────────────────────────────────
     if (nextStatus === 'delivered') {
       order.isDelivered = true;
       order.deliveredAt = Date.now();
 
+      // COD: mark paid on delivery
       if (order.paymentMethod === 'COD' && !order.isPaid) {
         order.isPaid  = true;
         order.paidAt  = Date.now();
         order.paymentResult = {
-          id:           `COD-${order._id}`,
-          status:       'completed',
-          update_time:  new Date().toISOString(),
+          id:            `COD-${order._id}`,
+          status:        'completed',
+          update_time:   new Date().toISOString(),
           email_address: '',
         };
       }
     }
 
+    // ── Cancellation: restore stock + refund wallet if applicable ──────
     if (nextStatus === 'cancelled' && prevStatus !== 'cancelled') {
       for (const item of order.orderItems) {
         await Product.findByIdAndUpdate(
@@ -156,11 +194,32 @@ const updateOrderStatus = async (req, res) => {
           { $inc: { stock: item.quantity } }
         );
       }
+
+      // Refund to wallet if paid via Wallet (or prepaid methods)
+      if (order.isPaid && ['Wallet', 'Razorpay', 'Stripe', 'UPI'].includes(order.paymentMethod)) {
+        await Wallet.findOneAndUpdate(
+          { user: order.user },
+          {
+            $inc: { balance: order.totalPrice },
+            $push: {
+              transactions: {
+                type:        'credit',
+                amount:      order.totalPrice,
+                description: `Refund for cancelled order #${order._id}`,
+                orderId:     order._id,
+                status:      'completed',
+              },
+            },
+          },
+          { upsert: true }
+        );
+      }
     }
 
     await order.save();
     res.json(order);
   } catch (err) {
+    console.error('updateOrderStatus error:', err);
     res.status(500).json({ message: err.message });
   }
 };

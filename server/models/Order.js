@@ -26,26 +26,27 @@ const orderSchema = new mongoose.Schema(
     },
 
     shippingAddress: {
-      fullName: { type: String, required: true }, 
-      phone:    { type: String, required: true }, 
-      address: { type: String, required: true },
-      city:    { type: String, required: true },
-      pincode: { type: String, required: true },
-      state:   { type: String, required: true },
+      fullName: { type: String, required: true },
+      phone:    { type: String, required: true },
+      address:  { type: String, required: true },
+      city:     { type: String, required: true },
+      pincode:  { type: String, required: true },
+      state:    { type: String, required: true },
     },
 
     paymentMethod: {
       type:     String,
       required: true,
-      enum:     ['Razorpay', 'COD', 'Stripe','UPI'],
+      enum:     ['Razorpay', 'COD', 'Stripe', 'UPI', 'Wallet'], // ✅ Wallet added
       default:  'COD',
     },
 
     // Filled in after payment succeeds
     paymentResult: {
-      id:       String,
-      status:   String,
-      email:    String,
+      id:           String,
+      status:       String,
+      update_time:  String,
+      email_address: String,
     },
 
     isPaid:      { type: Boolean, default: false },
@@ -53,44 +54,41 @@ const orderSchema = new mongoose.Schema(
     isDelivered: { type: Boolean, default: false },
     deliveredAt: { type: Date },
 
-  status: {
-  type:    String,
-  enum:    ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
-  default: 'pending',
-},
+    status: {
+      type:    String,
+      enum:    ['pending', 'processing', 'shipped', 'delivered', 'cancelled', 'returned'],
+      default: 'pending',
+    },
 
     itemsPrice:    { type: Number, required: true },
     shippingPrice: { type: Number, required: true, default: 0 },
     totalPrice:    { type: Number, required: true },
 
-    // Cancellation reason (optional)
     cancelReason: { type: String },
 
     returnRequest: {
-  requested:          { type: Boolean, default: false },
-  reason:             { type: String                  },
-  requestedAt:        { type: Date                    },
-  status: {
-    type:    String,
-    enum:    ['pending', 'approved', 'rejected'],
-    default: 'pending',
-  },
-  resolvedAt:         { type: Date   },
-  adminNote:          { type: String },
-  returnableItems:    [String],
-  nonReturnableItems: [String],
-},
-coupon: {
-  code: String,
-  discountAmount: { type: Number, default: 0 },
-},
+      requested:   { type: Boolean, default: false },
+      reason:      { type: String },
+      requestedAt: { type: Date },
+      status: {
+        type:    String,
+        enum:    ['pending', 'approved', 'rejected'],
+        default: 'pending',
+      },
+      resolvedAt:         { type: Date },
+      adminNote:          { type: String },
+      returnableItems:    [String],
+      nonReturnableItems: [String],
+    },
 
+    coupon: {
+      code:           String,
+      discountAmount: { type: Number, default: 0 },
+    },
   },
   { timestamps: true }
 );
 
-// Auto-calculate rating after a review is added (used in productController)
-// Virtual to get item count quickly
 orderSchema.virtual('itemCount').get(function () {
   return this.orderItems.reduce((sum, item) => sum + item.quantity, 0);
 });
