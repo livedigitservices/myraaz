@@ -4,7 +4,8 @@ import {
   FiUsers, FiSearch, FiTrash2, FiShield,
   FiShieldOff, FiTrendingUp, FiBox,
   FiShoppingCart, FiEye, FiUser,
-  FiPackage
+  FiPackage,
+  FiHome
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -99,6 +100,7 @@ export default function AdminUsers() {
         <SideLink to="/admin/users"    icon={<FiUsers size={16} />}        label="Users" active  />
         <SideLink to="/admin/coupons" icon={<FiTag size={16} />} label="Coupons" />
         <SideLink to="/admin/returns" icon={<FiPackage size={16} />} label="Returns" />
+        <SideLink to="/admin/home-media" icon={<FiHome size={16} />} label="Home Media" />
 
         <div className="mt-auto px-4">
           <Link to="/" className="flex items-center gap-2 text-xs"

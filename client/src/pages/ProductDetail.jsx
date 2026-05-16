@@ -442,7 +442,7 @@ export default function ProductDetail() {
             {[
               { key: 'description', label: 'Description' },
               { key: 'reviews',     label: `Reviews (${product.numReviews})` },
-              { key: 'how-to',      label: 'How to Use'  },
+              // { key: 'how-to',      label: 'How to Use'  },
               { key: 'return',      label: 'Return Policy' },
             ].map(({ key, label }) => (
               <button key={key} onClick={() => setActiveTab(key)}

@@ -6,15 +6,17 @@ const {
   verifyRazorpayPayment,
   createStripeIntent,
   verifyStripePayment,
-  payWithWallet,
   razorpayWebhook,
 } = require('../controllers/paymentController');
+
+// Webhook — no auth, raw body handled in server.js
+router.post('/webhook/razorpay',      razorpayWebhook);
 
 router.post('/razorpay/create-order', protect, createRazorpayOrder);
 router.post('/razorpay/verify',       protect, verifyRazorpayPayment);
 router.post('/stripe/create-intent',  protect, createStripeIntent);
 router.post('/stripe/verify',         protect, verifyStripePayment);
-router.post('/wallet',                protect, payWithWallet);
-router.post('/webhook/razorpay',      razorpayWebhook);
+
+// ❌ /wallet removed — wallet payment is handled atomically in orderController.placeOrder
 
 module.exports = router;

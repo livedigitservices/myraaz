@@ -1,8 +1,14 @@
+/**
+ * paymentController.js
+ *
+ * Handles Razorpay and Stripe gateway flows only.
+ * Wallet payment is handled inside orderController.placeOrder — not here.
+ */
+
 const Razorpay = require('razorpay');
 const Stripe   = require('stripe');
 const crypto   = require('crypto');
 const Order    = require('../models/Order');
-const { debitWallet } = require('../services/walletService');
 
 const razorpay = new Razorpay({
   key_id:     process.env.RAZORPAY_KEY_ID,
@@ -11,7 +17,9 @@ const razorpay = new Razorpay({
 
 const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
-/* ── Razorpay create order ── */
+/* ─────────────────────────────────────────
+   POST /api/payment/razorpay/create-order
+───────────────────────────────────────── */
 const createRazorpayOrder = async (req, res) => {
   try {
     const { amount, currency = 'INR' } = req.body;
@@ -19,14 +27,12 @@ const createRazorpayOrder = async (req, res) => {
     if (!amount || amount <= 0)
       return res.status(400).json({ message: 'Invalid amount' });
 
-    const options = {
-      amount:   Math.round(amount * 100),
+    const order = await razorpay.orders.create({
+      amount:   Math.round(amount * 100), // paise
       currency,
       receipt:  `receipt_${Date.now()}`,
       notes:    { userId: req.user._id.toString() },
-    };
-
-    const order = await razorpay.orders.create(options);
+    });
 
     res.json({
       orderId:  order.id,
@@ -35,12 +41,14 @@ const createRazorpayOrder = async (req, res) => {
       keyId:    process.env.RAZORPAY_KEY_ID,
     });
   } catch (err) {
-    console.error('Razorpay create error:', err.message);
+    console.error('Razorpay create-order error:', err.message);
     res.status(500).json({ message: err.message });
   }
 };
 
-/* ── Razorpay verify ── */
+/* ─────────────────────────────────────────
+   POST /api/payment/razorpay/verify
+───────────────────────────────────────── */
 const verifyRazorpayPayment = async (req, res) => {
   try {
     const {
@@ -50,8 +58,8 @@ const verifyRazorpayPayment = async (req, res) => {
       orderId,
     } = req.body;
 
-    /* Verify signature */
-    const body     = razorpay_order_id + '|' + razorpay_payment_id;
+    // Verify HMAC signature
+    const body     = `${razorpay_order_id}|${razorpay_payment_id}`;
     const expected = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
       .update(body)
@@ -60,18 +68,18 @@ const verifyRazorpayPayment = async (req, res) => {
     if (expected !== razorpay_signature)
       return res.status(400).json({ message: 'Invalid payment signature' });
 
-    /* Update order */
     const order = await Order.findById(orderId);
-    if (!order)
-      return res.status(404).json({ message: 'Order not found' });
+    if (!order)      return res.status(404).json({ message: 'Order not found' });
+    if (order.isPaid) return res.json({ message: 'Already paid', order }); // idempotent
 
     order.isPaid  = true;
     order.paidAt  = Date.now();
     order.status  = 'processing';
     order.paymentResult = {
-      id:     razorpay_payment_id,
-      status: 'paid',
-      email:  req.user?.email,
+      id:           razorpay_payment_id,
+      status:       'paid',
+      update_time:  new Date().toISOString(),
+      email_address: req.user?.email || '',
     };
     await order.save();
 
@@ -82,13 +90,18 @@ const verifyRazorpayPayment = async (req, res) => {
   }
 };
 
-/* ── Stripe create intent ── */
+/* ─────────────────────────────────────────
+   POST /api/payment/stripe/create-intent
+───────────────────────────────────────── */
 const createStripeIntent = async (req, res) => {
   try {
     const { amount, orderId } = req.body;
 
+    if (!amount || amount <= 0)
+      return res.status(400).json({ message: 'Invalid amount' });
+
     const paymentIntent = await stripe.paymentIntents.create({
-      amount:   Math.round(amount * 100),
+      amount:   Math.round(amount * 100), // paise / cents
       currency: 'inr',
       metadata: { orderId, userId: req.user._id.toString() },
       automatic_payment_methods: { enabled: true },
@@ -101,7 +114,9 @@ const createStripeIntent = async (req, res) => {
   }
 };
 
-/* ── Stripe verify ── */
+/* ─────────────────────────────────────────
+   POST /api/payment/stripe/verify
+───────────────────────────────────────── */
 const verifyStripePayment = async (req, res) => {
   try {
     const { paymentIntentId, orderId } = req.body;
@@ -112,16 +127,17 @@ const verifyStripePayment = async (req, res) => {
       return res.status(400).json({ message: 'Payment not completed' });
 
     const order = await Order.findById(orderId);
-    if (!order)
-      return res.status(404).json({ message: 'Order not found' });
+    if (!order)       return res.status(404).json({ message: 'Order not found' });
+    if (order.isPaid) return res.json({ message: 'Already paid', order }); // idempotent
 
     order.isPaid  = true;
     order.paidAt  = Date.now();
     order.status  = 'processing';
     order.paymentResult = {
-      id:     paymentIntentId,
-      status: 'paid',
-      email:  req.user?.email,
+      id:           paymentIntentId,
+      status:       'paid',
+      update_time:  new Date().toISOString(),
+      email_address: req.user?.email || '',
     };
     await order.save();
 
@@ -132,73 +148,46 @@ const verifyStripePayment = async (req, res) => {
   }
 };
 
-/* ── Wallet payment ── */
-const payWithWallet = async (req, res) => {
-  try {
-    const { orderId } = req.body;
-
-    const order = await Order.findById(orderId);
-    if (!order)
-      return res.status(404).json({ message: 'Order not found' });
-
-    if (order.isPaid)
-      return res.status(400).json({ message: 'Order already paid' });
-
-    await debitWallet(
-      req.user._id,
-      order.totalPrice,
-      `Payment for order #${order._id.toString().slice(-8).toUpperCase()}`,
-      order._id,
-    );
-
-    order.isPaid        = true;
-    order.paidAt        = Date.now();
-    order.status        = 'processing';
-    order.paymentMethod = 'Wallet';
-    order.paymentResult = {
-      id:     `wallet_${Date.now()}`,
-      status: 'paid',
-      email:  req.user?.email,
-    };
-    await order.save();
-
-    res.json({ message: 'Payment successful', order });
-  } catch (err) {
-    console.error('Wallet pay error:', err.message);
-    res.status(500).json({ message: err.message });
-  }
-};
-
-/* ── Razorpay webhook ── */
+/* ─────────────────────────────────────────
+   POST /api/payment/webhook/razorpay
+   Raw body is required — handled in server.js
+   before express.json()
+───────────────────────────────────────── */
 const razorpayWebhook = async (req, res) => {
   try {
     const secret    = process.env.RAZORPAY_WEBHOOK_SECRET;
     const signature = req.headers['x-razorpay-signature'];
+    const body      = req.body; // raw Buffer from express.raw()
 
-    if (secret) {
+    if (secret && signature) {
       const expected = crypto
         .createHmac('sha256', secret)
-        .update(JSON.stringify(req.body))
+        .update(body)
         .digest('hex');
 
-      if (expected !== signature) {
+      if (expected !== signature)
         return res.status(400).json({ message: 'Invalid webhook signature' });
-      }
     }
 
-    const { event, payload } = req.body;
+    const payload = JSON.parse(body.toString());
+    const { event } = payload;
     console.log('Razorpay webhook event:', event);
 
     if (event === 'payment.captured') {
-      const paymentId = payload?.payment?.entity?.id;
-      const notes     = payload?.payment?.entity?.notes;
+      const paymentId = payload?.payload?.payment?.entity?.id;
+      const notes     = payload?.payload?.payment?.entity?.notes;
+
       if (notes?.orderId) {
         const order = await Order.findById(notes.orderId);
         if (order && !order.isPaid) {
           order.isPaid        = true;
           order.paidAt        = Date.now();
           order.status        = 'processing';
-          order.paymentResult = { id: paymentId, status: 'paid' };
+          order.paymentResult = {
+            id:          paymentId,
+            status:      'paid',
+            update_time: new Date().toISOString(),
+          };
           await order.save();
         }
       }
@@ -206,6 +195,7 @@ const razorpayWebhook = async (req, res) => {
 
     res.json({ received: true });
   } catch (err) {
+    console.error('Razorpay webhook error:', err.message);
     res.status(500).json({ message: err.message });
   }
 };
@@ -215,6 +205,5 @@ module.exports = {
   verifyRazorpayPayment,
   createStripeIntent,
   verifyStripePayment,
-  payWithWallet,
   razorpayWebhook,
 };

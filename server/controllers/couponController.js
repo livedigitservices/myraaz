@@ -1,14 +1,22 @@
 const Coupon = require('../models/Coupon');
 
-/* GET /api/coupons/banner — public, returns active banner coupon */
+/* ─────────────────────────────────────────
+   GET /api/coupons/banner
+   Public — returns the active banner coupon.
+   Uses $gte so a coupon expiring today still shows.
+───────────────────────────────────────── */
 const getBannerCoupon = async (req, res) => {
   try {
+    const now = new Date();
+    // Zero out time so "expires today" coupons still appear all day
+    now.setHours(0, 0, 0, 0);
+
     const coupon = await Coupon.findOne({
       isActive:     true,
       showOnBanner: true,
       $or: [
         { expiresAt: null },
-        { expiresAt: { $gt: new Date() } },
+        { expiresAt: { $gte: now } },   // ✅ $gte not $gt — includes today
       ],
     }).sort({ createdAt: -1 });
 
@@ -18,42 +26,51 @@ const getBannerCoupon = async (req, res) => {
   }
 };
 
-/* POST /api/coupons/validate — logged in user validates a coupon */
+/* ─────────────────────────────────────────
+   POST /api/coupons/validate
+   Authenticated user validates a coupon code.
+   Body: { code, orderAmount }
+───────────────────────────────────────── */
 const validateCoupon = async (req, res) => {
-  const { code, orderAmount } = req.body;
-
-  if (!coupon)
-      return res.status(404).json({ message: 'Invalid coupon code' });
-    
   try {
-    // const coupon = await Coupon.findOne({ code: code.toUpperCase(), isActive: true });
+    const { code, orderAmount } = req.body;
 
+    if (!code)
+      return res.status(400).json({ message: 'Coupon code is required' });
+
+    if (!orderAmount || orderAmount <= 0)
+      return res.status(400).json({ message: 'Valid order amount is required' });
+
+    // ✅ Query FIRST, then check result — was inverted before
     const coupon = await Coupon.findOne({
-      code: code.trim().toUpperCase(),
+      code:     code.trim().toUpperCase(),
       isActive: true,
     });
-    
 
-    if (coupon.expiresAt && new Date() > coupon.expiresAt)
-      return res.status(400).json({ message: 'This coupon has expired' });
+    if (!coupon)
+      return res.status(404).json({ message: 'Invalid coupon code' });
+
+    // Expiry — use $gte logic: expired if expiresAt is before start of today
+    if (coupon.expiresAt) {
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      if (new Date(coupon.expiresAt) < now)
+        return res.status(400).json({ message: 'This coupon has expired' });
+    }
 
     if (coupon.maxUses > 0 && coupon.usedCount >= coupon.maxUses)
       return res.status(400).json({ message: 'This coupon has reached its usage limit' });
 
     if (coupon.minOrder > 0 && orderAmount < coupon.minOrder)
       return res.status(400).json({
-        message: `Minimum order amount of ₹${coupon.minOrder} required for this coupon`
+        message: `Minimum order of ₹${coupon.minOrder} required for this coupon`,
       });
 
-    // const discount = coupon.type === 'percent'
-    //   ? Math.round(orderAmount * coupon.value / 100)
-    //   : coupon.value;
-
     const rawDiscount = coupon.type === 'percent'
-  ? Math.round(orderAmount * coupon.value / 100)
-  : coupon.value;
+      ? Math.round(orderAmount * coupon.value / 100)
+      : coupon.value;
 
-const discount = Math.min(rawDiscount, orderAmount);
+    const discount = Math.min(rawDiscount, orderAmount); // never exceed order total
 
     res.json({
       valid:       true,
@@ -62,14 +79,18 @@ const discount = Math.min(rawDiscount, orderAmount);
       value:       coupon.value,
       discount,
       description: coupon.description,
-      message:     `${coupon.type === 'percent' ? `${coupon.value}% off` : `₹${coupon.value} off`} applied!`,
+      message:     coupon.type === 'percent'
+        ? `${coupon.value}% off applied!`
+        : `₹${coupon.value} off applied!`,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-/* GET /api/coupons/admin — admin: get all coupons */
+/* ─────────────────────────────────────────
+   GET /api/coupons/admin
+───────────────────────────────────────── */
 const getAllCoupons = async (req, res) => {
   try {
     const coupons = await Coupon.find({}).sort({ createdAt: -1 });
@@ -79,24 +100,29 @@ const getAllCoupons = async (req, res) => {
   }
 };
 
-/* POST /api/coupons/admin — admin: create coupon */
+/* ─────────────────────────────────────────
+   POST /api/coupons/admin
+───────────────────────────────────────── */
 const createCoupon = async (req, res) => {
   try {
-    const existing = await Coupon.findOne({ code: req.body.code?.toUpperCase() });
+    const code = req.body.code?.trim().toUpperCase();
+    if (!code)
+      return res.status(400).json({ message: 'Coupon code is required' });
+
+    const existing = await Coupon.findOne({ code });
     if (existing)
       return res.status(400).json({ message: 'Coupon code already exists' });
 
-    const coupon = await Coupon.create({
-      ...req.body,
-      code: req.body.code.toUpperCase(),
-    });
+    const coupon = await Coupon.create({ ...req.body, code });
     res.status(201).json(coupon);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
 
-/* PUT /api/coupons/admin/:id — admin: update coupon */
+/* ─────────────────────────────────────────
+   PUT /api/coupons/admin/:id
+───────────────────────────────────────── */
 const updateCoupon = async (req, res) => {
   try {
     const coupon = await Coupon.findById(req.params.id);
@@ -105,7 +131,7 @@ const updateCoupon = async (req, res) => {
 
     Object.assign(coupon, {
       ...req.body,
-      code: req.body.code?.toUpperCase() || coupon.code,
+      code: req.body.code?.trim().toUpperCase() || coupon.code,
     });
     await coupon.save();
     res.json(coupon);
@@ -114,7 +140,9 @@ const updateCoupon = async (req, res) => {
   }
 };
 
-/* DELETE /api/coupons/admin/:id — admin: delete coupon */
+/* ─────────────────────────────────────────
+   DELETE /api/coupons/admin/:id
+───────────────────────────────────────── */
 const deleteCoupon = async (req, res) => {
   try {
     const coupon = await Coupon.findById(req.params.id);
@@ -128,6 +156,10 @@ const deleteCoupon = async (req, res) => {
 };
 
 module.exports = {
-  getBannerCoupon, validateCoupon,
-  getAllCoupons, createCoupon, updateCoupon, deleteCoupon,
+  getBannerCoupon,
+  validateCoupon,
+  getAllCoupons,
+  createCoupon,
+  updateCoupon,
+  deleteCoupon,
 };

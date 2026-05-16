@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   FiPackage, FiCheck, FiX, FiChevronDown,
   FiChevronUp, FiTrendingUp, FiBox,
-  FiShoppingCart, FiUsers, FiTag, FiEye
+  FiShoppingCart, FiUsers, FiTag, FiEye,
+  FiHome
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -143,9 +144,11 @@ export default function AdminReturns() {
         <SideLink to="/admin"          icon={<FiTrendingUp size={16} />}   label="Dashboard"       />
         <SideLink to="/admin/products" icon={<FiBox size={16} />}          label="Products"        />
         <SideLink to="/admin/orders"   icon={<FiShoppingCart size={16} />} label="Orders"          />
-        <SideLink to="/admin/returns"  icon={<FiPackage size={16} />}      label="Returns" active  />
         <SideLink to="/admin/users"    icon={<FiUsers size={16} />}        label="Users"           />
         <SideLink to="/admin/coupons"  icon={<FiTag size={16} />}          label="Coupons"         />
+        <SideLink to="/admin/returns"  icon={<FiPackage size={16} />}      label="Returns" active  />
+        <SideLink to="/admin/home-media" icon={<FiHome size={16} />} label="Home Media" />
+        
         <div className="mt-auto px-4">
           <Link to="/" className="flex items-center gap-2 text-xs"
                 style={{ color: 'var(--color-muted)' }}>

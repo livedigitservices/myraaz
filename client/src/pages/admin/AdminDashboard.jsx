@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   FiPackage, FiUsers, FiShoppingCart, FiTrendingUp,
   FiPlus, FiEye, FiClock, FiCheckCircle, FiTruck,
-  FiXCircle, FiArrowRight, FiBox, FiAlertCircle,FiTag
+  FiXCircle, FiArrowRight, FiBox, FiAlertCircle,FiTag,
+  FiHome
 } from 'react-icons/fi';
 import api from '../../services/api';
 
@@ -123,7 +124,7 @@ export default function AdminDashboard() {
         <SideLink to="/admin/users"     icon={<FiUsers size={16} />}     label="Users"     />
         <SideLink to="/admin/coupons" icon={<FiTag size={16} />} label="Coupons" />
         <SideLink to="/admin/returns" icon={<FiPackage size={16} />} label="Returns" />
-
+        <SideLink to="/admin/home-media" icon={<FiHome size={16} />} label="Home Media" />
 
         <div className="mt-auto px-4">
           <Link to="/"

@@ -7,25 +7,23 @@ const {
   getAllReturns,
   handleReturn,
   getMyReturns,
-  getUserWallet,
   handleRazorpayWebhook,
 } = require('../controllers/returnController');
 
-/* ── Static/named routes FIRST — before any /:param routes ── */
+// ❌ getUserWallet removed from here — wallet lives at GET /api/wallet
 
-/* Webhooks — no auth */
+/* ── Webhook — no auth ── */
 router.post('/webhook/razorpay',              handleRazorpayWebhook);
 
-/* Admin */
+/* ── Admin ── */
 router.get('/admin',                protect, admin, getAllReturns);
 router.put('/admin/:returnId',      protect, admin, handleReturn);
 
-/* User — static paths before /:orderId */
-router.get('/my',                   protect,        getMyReturns);
-router.get('/wallet',               protect,        getUserWallet);
-router.get('/eligibility/:orderId', protect,        checkEligibility);
+/* ── User — static paths before /:orderId ── */
+router.get('/my',                   protect, getMyReturns);
+router.get('/eligibility/:orderId', protect, checkEligibility);
 
-/* ── Param route LAST ── */
-router.post('/:orderId',            protect,        requestReturn);
+/* ── Param route last ── */
+router.post('/:orderId',            protect, requestReturn);
 
 module.exports = router;

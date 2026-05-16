@@ -289,17 +289,7 @@ export default function Cart() {
                   {promoError && (
                     <p className="text-xs mt-2 text-red-500">{promoError}</p>
                   )}
-                  {/* Hint codes */}
-                  {/* <div className="flex flex-wrap gap-2 mt-3">
-                    {Object.entries(PROMO_CODES).map(([code, { label }]) => (
-                      <button key={code}
-                        onClick={() => { setPromoInput(code); setPromoError(''); }}
-                        className="text-xs px-2.5 py-1 rounded-full transition-all hover:opacity-80"
-                        style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-primary)' }}>
-                        {code} — {label}
-                      </button>
-                    ))}
-                  </div> */}
+                  
                 </>
               )}
             </div>
@@ -307,7 +297,7 @@ export default function Cart() {
             {/* Perks */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { icon: <FiTruck size={16} />,   text: 'Free shipping', sub: 'on orders ₹499+' },
+                { icon: <FiTruck size={16} />,   text: 'Free shipping', sub: 'on orders ₹999+' },
                 { icon: <FiShield size={16} />,  text: '100% authentic', sub: 'guaranteed'      },
                 { icon: <FiTag size={16} />,     text: 'Best price',    sub: 'always'           },
               ].map(({ icon, text, sub }) => (

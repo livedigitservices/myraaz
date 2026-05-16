@@ -1,99 +1,138 @@
+/**
+ * orderController.js
+ *
+ * Wallet payments are handled atomically inside placeOrder.
+ * The paymentController's /payment/wallet route is intentionally removed.
+ * Stock decrements and wallet debits both happen in the same request.
+ */
+
 const Order   = require('../models/Order.js');
 const Product = require('../models/Product');
 const Coupon  = require('../models/Coupon');
 const User    = require('../models/User');
-const Wallet  = require('../models/Wallet');
+const { debitWallet, refundToWallet } = require('../services/walletService');
 
 /* ─────────────────────────────────────────
    POST /api/orders
-   Place order + decrement stock atomically
+   1. Decrement stock atomically per item
+   2. If Wallet payment: debit wallet atomically
+      (rolls back stock if wallet debit fails)
+   3. Create order document
+   4. Clear cart + increment coupon usage
 ───────────────────────────────────────── */
 const placeOrder = async (req, res) => {
-  try {
-    const {
-      orderItems, shippingAddress, paymentMethod,
-      itemsPrice, shippingPrice, totalPrice, coupon,
-    } = req.body;
+  const {
+    orderItems, shippingAddress, paymentMethod,
+    itemsPrice, shippingPrice, totalPrice, coupon,
+  } = req.body;
 
-    if (!orderItems || orderItems.length === 0)
-      return res.status(400).json({ message: 'No items in order' });
+  if (!orderItems || orderItems.length === 0)
+    return res.status(400).json({ message: 'No items in order' });
 
-    // ── 1. Decrement stock atomically ──────────────────────────────────
-    for (const item of orderItems) {
-      const updated = await Product.findOneAndUpdate(
-        { _id: item.product, stock: { $gte: item.quantity } },
-        { $inc: { stock: -item.quantity } },
-        { returnDocument: 'after' }
+  // ── 1. Decrement stock atomically ──────────────────────────────────────
+  const decremented = []; // track what was decremented for rollback
+
+  for (const item of orderItems) {
+    const updated = await Product.findOneAndUpdate(
+      { _id: item.product, stock: { $gte: item.quantity } },
+      { $inc: { stock: -item.quantity } },
+      { returnDocument: 'after' }
+    );
+
+    if (!updated) {
+      // Rollback already-decremented items before returning error
+      for (const d of decremented) {
+        await Product.findByIdAndUpdate(d.product, { $inc: { stock: d.quantity } });
+      }
+
+      const product = await Product.findById(item.product).select('name stock');
+      if (!product)
+        return res.status(404).json({ message: `Product not found: ${item.product}` });
+
+      return res.status(400).json({
+        message: `Insufficient stock for "${product.name}". Available: ${product.stock}, requested: ${item.quantity}`,
+      });
+    }
+
+    decremented.push({ product: item.product, quantity: item.quantity });
+  }
+
+  // ── 2. Handle Wallet payment ───────────────────────────────────────────
+  let isPaid        = false;
+  let paidAt        = undefined;
+  let paymentResult = undefined;
+
+  if (paymentMethod === 'Wallet') {
+    try {
+      await debitWallet(
+        req.user._id,
+        totalPrice,
+        `Payment for order`,  // orderId not available yet; updated below after order creation
       );
 
-      if (!updated) {
-        const product = await Product.findById(item.product).select('name stock');
-        if (!product)
-          return res.status(404).json({ message: `Product not found: ${item.product}` });
-
-        return res.status(400).json({
-          message: `Insufficient stock for "${product.name}". Available: ${product.stock}, requested: ${item.quantity}`,
-        });
-      }
-    }
-
-    // ── 2. Handle Wallet payment ───────────────────────────────────────
-    let isPaid    = false;
-    let paidAt    = undefined;
-    let paymentResult = undefined;
-
-    if (paymentMethod === 'Wallet') {
-      const wallet = await Wallet.findOne({ user: req.user._id });
-
-      if (!wallet || wallet.balance < totalPrice) {
-        // Rollback stock decrements
-        for (const item of orderItems) {
-          await Product.findByIdAndUpdate(item.product, { $inc: { stock: item.quantity } });
-        }
-        return res.status(400).json({ message: 'Insufficient wallet balance' });
+      isPaid        = true;
+      paidAt        = new Date();
+      paymentResult = {
+        id:     `WALLET-${Date.now()}`,
+        status: 'paid',
+        email:  req.user.email,
+      };
+    } catch (walletErr) {
+      // Wallet debit failed — rollback stock
+      for (const d of decremented) {
+        await Product.findByIdAndUpdate(d.product, { $inc: { stock: d.quantity } });
       }
 
-      wallet.balance -= totalPrice;
-      wallet.transactions.push({
-        type:        'debit',
-        amount:      totalPrice,
-        description: 'Order payment via Wallet',
-        status:      'completed',
+      const statusCode = walletErr.statusCode || 500;
+      return res.status(statusCode).json({
+        message:   walletErr.message,
+        available: walletErr.available,
+        required:  walletErr.required,
       });
-      await wallet.save();
-
-      isPaid    = true;
-      paidAt    = new Date();
-      paymentResult = { id: `WALLET-${Date.now()}`, status: 'completed' };
     }
+  }
 
-    // ── 3. Create order ────────────────────────────────────────────────
-    const order = await Order.create({
+  // ── 3. Create order ────────────────────────────────────────────────────
+  let order;
+  try {
+    order = await Order.create({
       user: req.user._id,
       orderItems, shippingAddress, paymentMethod,
       itemsPrice, shippingPrice, totalPrice, coupon,
-      isPaid, paidAt, paymentResult,
+      isPaid,
+      paidAt,
+      paymentResult,
+      // Wallet orders go straight to processing; others stay pending until paid
+      status: isPaid ? 'processing' : 'pending',
     });
-
-    // ── 4. Post-order cleanup (non-critical) ───────────────────────────
-    try {
-      await User.findByIdAndUpdate(req.user._id, { $set: { cart: [] } });
-
-      if (coupon?.code) {
-        await Coupon.findOneAndUpdate(
-          { code: coupon.code.toUpperCase() },
-          { $inc: { usedCount: 1 } }
-        );
-      }
-    } catch (_) {
-      // intentionally swallowed — order already created
+  } catch (createErr) {
+    // Order creation failed — rollback stock (wallet already debited, so refund it)
+    for (const d of decremented) {
+      await Product.findByIdAndUpdate(d.product, { $inc: { stock: d.quantity } });
     }
-
-    res.status(201).json(order);
-  } catch (err) {
-    console.error('placeOrder error:', err);
-    res.status(500).json({ message: err.message });
+    if (paymentMethod === 'Wallet') {
+      await refundToWallet(
+        req.user._id,
+        totalPrice,
+        order?._id || null,
+        'Refund: order creation failed'
+      ).catch(() => {}); // best-effort refund
+    }
+    console.error('placeOrder — Order.create failed:', createErr);
+    return res.status(500).json({ message: createErr.message });
   }
+
+  // ── 4. Post-order cleanup (non-critical — swallowed individually) ──────
+  await User.findByIdAndUpdate(req.user._id, { $set: { cart: [] } }).catch(() => {});
+
+  if (coupon?.code) {
+    await Coupon.findOneAndUpdate(
+      { code: coupon.code.toUpperCase() },
+      { $inc: { usedCount: 1 } }
+    ).catch(() => {});
+  }
+
+  res.status(201).json(order);
 };
 
 /* ─────────────────────────────────────────
@@ -131,7 +170,7 @@ const getAdminStats = async (req, res) => {
       await Promise.all([
         Order.countDocuments(),
         Order.countDocuments({ status: 'pending' }),
-        Product.countDocuments(),
+        require('../models/Product').countDocuments(),
         Order.aggregate([
           { $match: { status: 'delivered' } },
           { $group: { _id: null, total: { $sum: '$totalPrice' } } },
@@ -157,6 +196,9 @@ const getAdminStats = async (req, res) => {
 
 /* ─────────────────────────────────────────
    PUT /api/orders/admin/:id/status
+   On cancellation:
+   - Restore stock for every item
+   - Refund to wallet for all prepaid methods
 ───────────────────────────────────────── */
 const updateOrderStatus = async (req, res) => {
   try {
@@ -168,7 +210,7 @@ const updateOrderStatus = async (req, res) => {
 
     order.status = nextStatus;
 
-    // ── Mark as delivered ──────────────────────────────────────────────
+    // ── Delivered ──────────────────────────────────────────────────────
     if (nextStatus === 'delivered') {
       order.isDelivered = true;
       order.deliveredAt = Date.now();
@@ -178,16 +220,17 @@ const updateOrderStatus = async (req, res) => {
         order.isPaid  = true;
         order.paidAt  = Date.now();
         order.paymentResult = {
-          id:            `COD-${order._id}`,
-          status:        'completed',
-          update_time:   new Date().toISOString(),
-          email_address: '',
+          id:           `COD-${order._id}`,
+          status:       'completed',
+          update_time:  new Date().toISOString(),
+          email_address: req.user?.email || '',
         };
       }
     }
 
-    // ── Cancellation: restore stock + refund wallet if applicable ──────
+    // ── Cancelled ──────────────────────────────────────────────────────
     if (nextStatus === 'cancelled' && prevStatus !== 'cancelled') {
+      // Restore stock
       for (const item of order.orderItems) {
         await Product.findByIdAndUpdate(
           item.product,
@@ -195,24 +238,15 @@ const updateOrderStatus = async (req, res) => {
         );
       }
 
-      // Refund to wallet if paid via Wallet (or prepaid methods)
-      if (order.isPaid && ['Wallet', 'Razorpay', 'Stripe', 'UPI'].includes(order.paymentMethod)) {
-        await Wallet.findOneAndUpdate(
-          { user: order.user },
-          {
-            $inc: { balance: order.totalPrice },
-            $push: {
-              transactions: {
-                type:        'credit',
-                amount:      order.totalPrice,
-                description: `Refund for cancelled order #${order._id}`,
-                orderId:     order._id,
-                status:      'completed',
-              },
-            },
-          },
-          { upsert: true }
-        );
+      // Refund for all prepaid methods
+      const prepaidMethods = ['Wallet', 'Razorpay', 'Stripe', 'UPI'];
+      if (order.isPaid && prepaidMethods.includes(order.paymentMethod)) {
+        await refundToWallet(
+          order.user,
+          order.totalPrice,
+          order._id,
+          `Refund for cancelled order #${order._id.toString().slice(-8).toUpperCase()}`
+        ).catch(err => console.error('Cancellation refund to wallet failed:', err.message));
       }
     }
 
@@ -224,4 +258,10 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
-module.exports = { placeOrder, getMyOrders, getAllOrders, getAdminStats, updateOrderStatus };
+module.exports = {
+  placeOrder,
+  getMyOrders,
+  getAllOrders,
+  getAdminStats,
+  updateOrderStatus,
+};

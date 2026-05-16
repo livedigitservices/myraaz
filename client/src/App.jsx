@@ -26,6 +26,7 @@ import AdminUsers     from './pages/admin/AdminUsers';
 import AdminCoupons from './pages/admin/AdminCoupons';
 import AdminReturns from './pages/admin/AdminReturns';
 import Wallet from './pages/user/Wallet';
+import AdminHomeMedia from './pages/admin/AdminHomeMedia';
 
 export default function App() {
   return (
@@ -57,6 +58,7 @@ export default function App() {
             <Route path="/admin/coupons" element={<AdminRoute><AdminCoupons /></AdminRoute>} />
             <Route path="/admin/returns" element={<AdminRoute><AdminReturns /></AdminRoute>} />
             <Route path="/dashboard/wallet" element={<PrivateRoute><Wallet /></PrivateRoute>} />
+            <Route path="/admin/home-media" element={<AdminHomeMedia />} />
           </Routes>
         </main>
         <Footer />

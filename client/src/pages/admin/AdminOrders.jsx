@@ -4,7 +4,8 @@ import {
   FiClock, FiCheckCircle, FiTruck, FiXCircle,
   FiPackage, FiSearch, FiTrendingUp, FiBox,
   FiUsers, FiShoppingCart, FiEye, FiChevronDown,
-  FiX, FiMapPin, FiCreditCard, FiUser, FiTag, FiMenu
+  FiX, FiMapPin, FiCreditCard, FiUser, FiTag, FiMenu,
+  FiHome
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
@@ -54,6 +55,8 @@ const SidebarContent = ({ onClose }) => (
     <SideLink to="/admin/users"    onClick={onClose} icon={<FiUsers size={16} />}        label="Users"          />
     <SideLink to="/admin/coupons"  onClick={onClose} icon={<FiTag size={16} />}          label="Coupons"        />
     <SideLink to="/admin/returns" onClick={onClose} icon={<FiPackage size={16} />} label="Returns" />
+    <SideLink to="/admin/home-media" icon={<FiHome size={16} />} label="Home Media" />
+    <SideLink to="/admin/home-media" icon={<FiHome size={16} />} label="Home Media" />
 
     <div className="mt-auto px-4">
       <Link to="/" className="flex items-center gap-2 text-xs"
