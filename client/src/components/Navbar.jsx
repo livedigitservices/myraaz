@@ -50,7 +50,8 @@ export default function Navbar() {
         <Link to="/" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-full flex items-center justify-center"
                style={{ backgroundColor: 'var(--color-primary)' }}>
-            <span className="text-white text-xs font-bold">M</span>
+            {/* <span className="text-white text-xs font-bold">M</span> */}
+            <img src="../public/raaz_favicon.svg" alt="logo" />
           </div>
           <span className="text-xl font-semibold"
                 style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>

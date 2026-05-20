@@ -329,17 +329,23 @@ export default function Home() {
                     style={{ backgroundColor: 'var(--color-primary)' }} />
               100% Natural Ingredients
             </div>
-            <h1 className="text-5xl md:text-6xl font-semibold leading-tight mb-6"
-                style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
-              Unlock Your
-              <span className="block" style={{ color: 'var(--color-primary)' }}>Hair's True</span>
-              Potential.
-            </h1>
-            <p className="text-base leading-relaxed mb-8 max-w-md"
-               style={{ color: 'var(--color-muted)' }}>
-              Premium hair care products crafted from nature's finest ingredients —
-              because your hair deserves the very best.
-            </p>
+            <h1
+  className="text-5xl md:text-6xl font-semibold leading-tight mb-6"
+  style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}
+>
+  Elevate Your
+  <span className="block" style={{ color: 'var(--color-primary)' }}>
+    Beauty Routine
+  </span>
+</h1>
+
+<p
+  className="text-sm leading-relaxed mb-8 max-w-md"
+  style={{ color: 'var(--color-muted)' }}
+>
+  Discover premium beauty and cosmetic essentials crafted to enhance your
+  everyday self-care — from skincare and haircare to beauty products you’ll love ♥.
+</p>
             <div className="flex items-center gap-4 flex-wrap">
               <Link to="/products"
                     className="flex items-center gap-2 px-7 py-3.5 rounded-full text-white

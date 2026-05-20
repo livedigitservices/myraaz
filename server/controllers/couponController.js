@@ -16,7 +16,7 @@ const getBannerCoupon = async (req, res) => {
       showOnBanner: true,
       $or: [
         { expiresAt: null },
-        { expiresAt: { $gte: now } },   // ✅ $gte not $gt — includes today
+        { expiresAt: { $gte: now } },   //  $gte not $gt — includes today
       ],
     }).sort({ createdAt: -1 });
 
@@ -41,7 +41,7 @@ const validateCoupon = async (req, res) => {
     if (!orderAmount || orderAmount <= 0)
       return res.status(400).json({ message: 'Valid order amount is required' });
 
-    // ✅ Query FIRST, then check result — was inverted before
+    //  Query FIRST, then check result — was inverted before
     const coupon = await Coupon.findOne({
       code:     code.trim().toUpperCase(),
       isActive: true,

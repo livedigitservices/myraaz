@@ -56,7 +56,7 @@ const SidebarContent = ({ onClose }) => (
     <SideLink to="/admin/coupons"  onClick={onClose} icon={<FiTag size={16} />}          label="Coupons"        />
     <SideLink to="/admin/returns" onClick={onClose} icon={<FiPackage size={16} />} label="Returns" />
     <SideLink to="/admin/home-media" icon={<FiHome size={16} />} label="Home Media" />
-    <SideLink to="/admin/home-media" icon={<FiHome size={16} />} label="Home Media" />
+
 
     <div className="mt-auto px-4">
       <Link to="/" className="flex items-center gap-2 text-xs"
@@ -555,10 +555,11 @@ export default function AdminOrders() {
                         {['pending','processing','shipped','delivered','cancelled'].map(s => (
                           <option key={s} value={s}>{s}</option>
                         ))}
-                      </select>
-                      <FiChevronDown size={10}
+                        <FiChevronDown size={10}
                         className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
                         style={{ color: 'var(--color-muted)' }} />
+                      </select>
+                      
                     </div>
                     {/* View button */}
                     <button onClick={() => setSelectedOrder(order)}

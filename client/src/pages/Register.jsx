@@ -367,7 +367,7 @@ const handleSaveDetails = async () => {
                   <FiUser size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2"
                           style={{ color: 'var(--color-muted)' }} />
                   <input type="text" name="name" value={form.name}
-                    onChange={handleChange} placeholder="Priya Sharma"
+                    onChange={handleChange} placeholder="Tharun Mellacheruvu"
                     className="input pl-10 text-sm" />
                 </div>
               </div>

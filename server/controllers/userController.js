@@ -1,14 +1,5 @@
 const User = require('../models/User.js');
 
-// GET /api/users/profile
-// const getUserProfile = async (req, res) => {
-//   try {
-//     const user = await User.findById(req.user._id).select('-password');
-//     res.json(user);
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
 
 const getUserProfile = async (req, res) => {
   try {
@@ -27,20 +18,6 @@ const getUserProfile = async (req, res) => {
   }
 };
 
-// PUT /api/users/profile
-// const updateUserProfile = async (req, res) => {
-//   try {
-//     const user = await User.findById(req.user._id);
-//     user.name     = req.body.name     || user.name;
-//     user.email    = req.body.email    || user.email;
-//     if (req.body.password) user.password = req.body.password; // auto-hashed by pre-save hook
-
-//     const updated = await user.save();
-//     res.json({ _id: updated._id, name: updated.name, email: updated.email });
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
 
 const updateUserProfile = async (req, res) => {
   try {

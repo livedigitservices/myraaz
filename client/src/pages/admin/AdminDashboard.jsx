@@ -1,13 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   FiPackage, FiUsers, FiShoppingCart, FiTrendingUp,
   FiPlus, FiEye, FiClock, FiCheckCircle, FiTruck,
-  FiXCircle, FiArrowRight, FiBox, FiAlertCircle,FiTag,
-  FiHome
+  FiXCircle, FiArrowRight, FiBox, FiAlertCircle, FiTag,
+  FiHome, FiMoreHorizontal, FiGrid,
 } from 'react-icons/fi';
 import api from '../../services/api';
-
 
 /* ── Status badge ── */
 const StatusBadge = ({ status }) => {
@@ -61,29 +60,121 @@ const SkeletonCard = () => (
 );
 
 /* ── Sidebar link ── */
-const SideLink = ({ to, icon, label, active }) => (
-  <Link to={to}
-    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
-               transition-all duration-150"
-    style={{
-      backgroundColor: active ? 'var(--color-primary)' : 'transparent',
-      color: active ? 'white' : 'var(--color-muted)',
-    }}>
-    {icon} {label}
-  </Link>
-);
+const SideLink = ({ to, icon, label }) => {
+  const { pathname } = useLocation();
+  const active = pathname === to;
+  return (
+    <Link to={to}
+      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
+                 transition-all duration-150"
+      style={{
+        backgroundColor: active ? 'var(--color-primary)' : 'transparent',
+        color: active ? 'white' : 'var(--color-muted)',
+      }}>
+      {icon} {label}
+    </Link>
+  );
+};
+
+/* ── Mobile Bottom Nav ── */
+const MobileNav = () => {
+  const { pathname } = useLocation();
+  const [showMore, setShowMore] = useState(false);
+
+  const mainLinks = [
+    { to: '/admin',          icon: <FiGrid size={20} />,        label: 'Home'     },
+    { to: '/admin/products', icon: <FiBox size={20} />,         label: 'Products' },
+    { to: '/admin/orders',   icon: <FiShoppingCart size={20} />,label: 'Orders'   },
+    { to: '/admin/users',    icon: <FiUsers size={20} />,       label: 'Users'    },
+  ];
+
+  const moreLinks = [
+    { to: '/admin/coupons',    icon: <FiTag size={18} />,     label: 'Coupons'    },
+    { to: '/admin/returns',    icon: <FiPackage size={18} />, label: 'Returns'    },
+    { to: '/admin/home-media', icon: <FiHome size={18} />,    label: 'Home Media' },
+    { to: '/',                 icon: <FiEye size={18} />,     label: 'View Store' },
+  ];
+
+  return (
+    <>
+      {/* More drawer overlay */}
+      {showMore && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30"
+          onClick={() => setShowMore(false)}
+        >
+          <div
+            className="absolute bottom-16 left-0 right-0 bg-white rounded-t-2xl p-4 pb-2"
+            style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.12)' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <p className="text-xs font-semibold uppercase tracking-widest mb-3 px-1"
+               style={{ color: 'var(--color-muted)' }}>More</p>
+            {moreLinks.map(({ to, icon, label }) => (
+              <Link
+                key={to}
+                to={to}
+                onClick={() => setShowMore(false)}
+                className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm
+                           transition-all active:opacity-70"
+                style={{ color: 'var(--color-dark)' }}
+              >
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
+                     style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-primary)' }}>
+                  {icon}
+                </div>
+                {label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Bottom bar */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t flex"
+           style={{ borderColor: 'var(--color-soft)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        {mainLinks.map(({ to, icon, label }) => {
+          const active = pathname === to;
+          return (
+            <Link
+              key={to}
+              to={to}
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2
+                         transition-colors"
+              style={{ color: active ? 'var(--color-primary)' : 'var(--color-muted)' }}
+            >
+              {icon}
+              <span className="text-[10px] font-medium">{label}</span>
+            </Link>
+          );
+        })}
+
+        {/* More button */}
+        <button
+          onClick={() => setShowMore(v => !v)}
+          className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2
+                     transition-colors border-none bg-transparent cursor-pointer"
+          style={{ color: showMore ? 'var(--color-primary)' : 'var(--color-muted)' }}
+        >
+          <FiMoreHorizontal size={20} />
+          <span className="text-[10px] font-medium">More</span>
+        </button>
+      </nav>
+    </>
+  );
+};
 
 export default function AdminDashboard() {
-  const [stats, setStats]   = useState(null);
+  const [stats, setStats]     = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    // FIX: renamed from 'fetch' to 'loadStats' to avoid shadowing the global fetch API
+    const loadStats = async () => {
       try {
         const { data } = await api.get('/orders/admin/stats');
         setStats(data);
       } catch {
-        // use mock data if API fails
         setStats({
           totalOrders:   0,
           totalRevenue:  0,
@@ -94,18 +185,17 @@ export default function AdminDashboard() {
         setLoading(false);
       }
     };
-    fetch();
+    loadStats();
   }, []);
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-cream)' }}>
 
-      {/* ── SIDEBAR ── */}
+      {/* ── SIDEBAR (desktop only) ── */}
       <aside className="hidden lg:flex flex-col w-56 bg-white sticky top-16 h-[calc(100vh-64px)]
                         border-r py-6 px-3 gap-1"
              style={{ borderColor: 'var(--color-soft)', boxShadow: 'var(--shadow-card)' }}>
 
-        {/* Brand */}
         <div className="px-4 mb-6">
           <p className="text-xs font-semibold uppercase tracking-widest"
              style={{ color: 'var(--color-muted)' }}>Admin Panel</p>
@@ -115,16 +205,16 @@ export default function AdminDashboard() {
 
         <p className="px-4 text-xs font-semibold uppercase tracking-widest mb-1"
            style={{ color: 'var(--color-muted)' }}>Overview</p>
-        <SideLink to="/admin"           icon={<FiTrendingUp size={16} />} label="Dashboard" active />
+        <SideLink to="/admin"            icon={<FiTrendingUp size={16} />}   label="Dashboard"  />
 
         <p className="px-4 text-xs font-semibold uppercase tracking-widest mt-4 mb-1"
            style={{ color: 'var(--color-muted)' }}>Manage</p>
-        <SideLink to="/admin/products"  icon={<FiBox size={16} />}       label="Products"  />
-        <SideLink to="/admin/orders"    icon={<FiShoppingCart size={16} />} label="Orders" />
-        <SideLink to="/admin/users"     icon={<FiUsers size={16} />}     label="Users"     />
-        <SideLink to="/admin/coupons" icon={<FiTag size={16} />} label="Coupons" />
-        <SideLink to="/admin/returns" icon={<FiPackage size={16} />} label="Returns" />
-        <SideLink to="/admin/home-media" icon={<FiHome size={16} />} label="Home Media" />
+        <SideLink to="/admin/products"   icon={<FiBox size={16} />}          label="Products"   />
+        <SideLink to="/admin/orders"     icon={<FiShoppingCart size={16} />} label="Orders"     />
+        <SideLink to="/admin/users"      icon={<FiUsers size={16} />}        label="Users"      />
+        <SideLink to="/admin/coupons"    icon={<FiTag size={16} />}          label="Coupons"    />
+        <SideLink to="/admin/returns"    icon={<FiPackage size={16} />}      label="Returns"    />
+        <SideLink to="/admin/home-media" icon={<FiHome size={16} />}         label="Home Media" />
 
         <div className="mt-auto px-4">
           <Link to="/"
@@ -136,7 +226,8 @@ export default function AdminDashboard() {
       </aside>
 
       {/* ── MAIN ── */}
-      <main className="flex-1 p-6 max-w-5xl">
+      {/* pb-20 adds space so content isn't hidden behind the mobile bottom nav */}
+      <main className="flex-1 p-6 max-w-5xl pb-20 lg:pb-6">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
@@ -171,14 +262,14 @@ export default function AdminDashboard() {
                 color="#7C6A5E"
                 to="/admin/orders"
               />
-             <StatCard
-  icon={<FiTrendingUp size={20} />}
-  label="Revenue"
-  value={`₹${(stats.totalRevenue || 0).toLocaleString('en-IN')}`}
-  sub="From delivered orders only"   
-  color="#D4AF8C"
-  to="/admin/orders"
-/>
+              <StatCard
+                icon={<FiTrendingUp size={20} />}
+                label="Revenue"
+                value={`₹${(stats.totalRevenue || 0).toLocaleString('en-IN')}`}
+                sub="From delivered orders only"
+                color="#D4AF8C"
+                to="/admin/orders"
+              />
               <StatCard
                 icon={<FiClock size={20} />}
                 label="Pending"
@@ -229,7 +320,7 @@ export default function AdminDashboard() {
                   </div>
                 ))}
               </div>
-            ) : stats?.recentOrders?.length === 0 ? (
+            ) : stats.recentOrders.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-14 text-center px-5">
                 <FiAlertCircle size={32} style={{ color: 'var(--color-muted)' }} className="mb-3" />
                 <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-dark)' }}>
@@ -241,7 +332,7 @@ export default function AdminDashboard() {
               </div>
             ) : (
               <div className="divide-y" style={{ borderColor: 'var(--color-soft)' }}>
-                {stats?.recentOrders?.map(order => (
+                {stats.recentOrders.map(order => (
                   <div key={order._id}
                        className="flex items-center justify-between px-5 py-3.5
                                   hover:bg-soft/40 transition-colors gap-4">
@@ -269,18 +360,17 @@ export default function AdminDashboard() {
 
           {/* Quick Actions */}
           <div className="flex flex-col gap-4">
-
             <div className="bg-white rounded-2xl p-5" style={{ boxShadow: 'var(--shadow-card)' }}>
               <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--color-dark)' }}>
                 Quick Actions
               </h2>
               <div className="space-y-2">
                 {[
-                  { to: '/admin/products/add', icon: <FiPlus size={15} />,        label: 'Add New Product',  color: 'var(--color-primary)' },
-                  { to: '/admin/products',     icon: <FiBox size={15} />,         label: 'Manage Products', color: 'var(--color-accent)'   },
-                  { to: '/admin/orders',       icon: <FiShoppingCart size={15} />,label: 'View Orders',     color: '#7C3AED'               },
-                  { to: '/admin/users',        icon: <FiUsers size={15} />,       label: 'Manage Users',    color: '#0EA5E9'               },
-                  { to: '/',                   icon: <FiEye size={15} />,         label: 'View Storefront', color: '#22C55E'               },
+                  { to: '/admin/products/add', icon: <FiPlus size={15} />,         label: 'Add New Product',  color: 'var(--color-primary)' },
+                  { to: '/admin/products',     icon: <FiBox size={15} />,          label: 'Manage Products',  color: 'var(--color-accent)'  },
+                  { to: '/admin/orders',       icon: <FiShoppingCart size={15} />, label: 'View Orders',      color: '#7C3AED'              },
+                  { to: '/admin/users',        icon: <FiUsers size={15} />,        label: 'Manage Users',     color: '#0EA5E9'              },
+                  { to: '/',                   icon: <FiEye size={15} />,          label: 'View Storefront',  color: '#22C55E'              },
                 ].map(({ to, icon, label, color }) => (
                   <Link key={to} to={to}
                     className="flex items-center gap-3 p-3 rounded-xl text-sm
@@ -313,11 +403,13 @@ export default function AdminDashboard() {
                 Add product <FiArrowRight size={11} />
               </Link>
             </div>
-
           </div>
         </div>
 
       </main>
+
+      {/* ── MOBILE BOTTOM NAV ── */}
+      <MobileNav />
     </div>
   );
 }
