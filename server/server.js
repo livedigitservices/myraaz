@@ -25,6 +25,7 @@ app.use('/api/coupons',  require('./routes/couponRoutes'));
 app.use('/api/returns',  require('./routes/returnRoutes'));
 app.use('/api/wallet',      require('./routes/walletRoutes'));
 app.use('/api/home-media', require('./routes/homeMediaRoutes'));
+app.use('/api/home-featured', require('./routes/homeFeaturedRoutes'));
 
 app.get('/', (req, res) => res.send('Hair Store API is running! 🌿'));
 

@@ -555,10 +555,11 @@ export default function AdminOrders() {
                         {['pending','processing','shipped','delivered','cancelled'].map(s => (
                           <option key={s} value={s}>{s}</option>
                         ))}
-                        <FiChevronDown size={10}
+                        
+                      </select>
+                      <FiChevronDown size={10}
                         className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
                         style={{ color: 'var(--color-muted)' }} />
-                      </select>
                       
                     </div>
                     {/* View button */}

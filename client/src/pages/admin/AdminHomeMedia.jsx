@@ -8,6 +8,8 @@ import {
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+import FeaturedProductPicker from './FeaturedProductPicker';
+
 
 const SideLink = ({ to, icon, label, active }) => (
   <Link to={to}
@@ -499,6 +501,7 @@ export default function AdminHomeMedia() {
                 </div>
               ))}
             </div>
+            <FeaturedProductPicker /> 
           </div>
 
           {/* ── Media grid ── */}

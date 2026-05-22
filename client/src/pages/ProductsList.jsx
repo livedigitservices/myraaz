@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback ,useRef} from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   FiSearch, FiFilter, FiX, FiStar, FiShoppingCart,
@@ -291,6 +291,52 @@ const Sidebar = ({
   </div>
 );
 
+
+
+
+/* ── Home Media Background (banner for page header) ── */
+const HomeMediaBackground = ({ media }) => {
+  const [index, setIndex] = useState(0);
+  const timerRef = useRef(null);
+  const total = media.length;
+
+  useEffect(() => {
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      setIndex(i => (i + 1) % total);
+    }, 5000);
+    return () => clearTimeout(timerRef.current);
+  }, [index, total]);
+
+  if (!total) return null;
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      <div style={{
+        display: 'flex',
+        width: `${total * 100}%`,
+        height: '100%',
+        transform: `translateX(-${(index * 100) / total}%)`,
+        transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+        pointerEvents: 'none',
+      }}>
+        {media.map(item => (
+          <div key={item._id} style={{ width: `${100 / total}%`, height: '100%', flexShrink: 0 }}>
+            {item.type === 'video' ? (
+              <video src={item.url} autoPlay muted playsInline loop
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            ) : (
+              <img src={item.url} alt="" aria-hidden="true"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+
 /* ── Main Products Page ── */
 export default function ProductsList() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -323,6 +369,16 @@ export default function ProductsList() {
     { label: 'Hair Masks',   value: 'hair-mask'   },
     { label: 'Serums',       value: 'serum'       },
   ];
+  const [homeMedia, setHomeMedia] = useState([]);
+
+useEffect(() => {
+  api.get('/home-media')
+    .then(({ data }) => setHomeMedia(Array.isArray(data) ? data : []))
+    .catch(() => setHomeMedia([]));
+}, []);
+
+
+  
 
   const sortOptions = [
     { label: 'Newest First',      value: 'newest'      },
@@ -387,7 +443,7 @@ export default function ProductsList() {
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-cream)' }}>
 
       {/* Page Header */}
-      <div style={{ backgroundColor: 'var(--color-primary)' }} className="py-10 sm:py-12">
+      {/* <div style={{ backgroundColor: 'var(--color-primary)' }} className="py-10 sm:py-12">
         <div className="max-w-6xl mx-auto px-4">
           <p className="text-white/60 text-xs uppercase tracking-widest mb-2">Our Collection</p>
           <h1 className="text-3xl sm:text-4xl font-semibold text-white mb-2"
@@ -396,15 +452,53 @@ export default function ProductsList() {
             {total > 0 ? `${total} products found` : 'Explore our full range of hair care'}
           </p>
         </div>
-      </div>
+      </div> */}
+
+
+{/* Page Header with sliding banner background */}
+<div className="relative overflow-hidden" style={{ minHeight: 'clamp(160px, 30vw, 320px)' }}>
+
+  {/* Sliding banner */}
+  {homeMedia.length > 0 && <HomeMediaBackground media={homeMedia} />}
+
+  {/* Fallback colour when no media loaded yet */}
+  {homeMedia.length === 0 && (
+    <div className="absolute inset-0" style={{ backgroundColor: 'var(--color-primary)' }} />
+  )}
+
+  {/* Dark overlay */}
+  <div className="absolute inset-0" style={{
+    background: 'linear-gradient(135deg, rgba(26,46,26,0.90) 0%, rgba(26,46,26,0.55) 60%, rgba(26,46,26,0.25) 100%)',
+    zIndex: 1,
+  }} />
+
+  {/* Text */}
+  <div className="relative h-full flex flex-col justify-center max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
+       style={{ zIndex: 2, paddingTop: 'clamp(24px, 5vw, 56px)', paddingBottom: 'clamp(24px, 5vw, 56px)' }}>
+
+    <p className="text-white/60 uppercase tracking-widest mb-1 sm:mb-2"
+       style={{ fontSize: 'clamp(9px, 1.5vw, 12px)' }}>
+      Our Collection
+    </p>
+
+    <h1 className="font-semibold text-white leading-tight mb-1 sm:mb-2"
+        style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(22px, 4vw, 42px)' }}>
+      All Products
+    </h1>
+
+    <p className="text-white/70"
+       style={{ fontSize: 'clamp(11px, 1.8vw, 14px)' }}>
+      {total > 0 ? `${total} products found` : 'Explore our full range of hair care'}
+    </p>
+
+  </div>
+
+</div>
+      
 
       <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
 
-        {/*
-          FIX: Toolbar — was flex-col sm:flex-row which stacked everything.
-          Now: search takes full width on its own row, then sort + filter + toggle
-          share a second row. Much cleaner on mobile.
-        */}
+       
         <div className="flex flex-col gap-3 mb-6">
 
           {/* Row 1: Search (full width) */}

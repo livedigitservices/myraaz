@@ -9,6 +9,7 @@ import { toast }        from 'react-toastify';
 import api              from '../services/api';
 import { useCart }      from '../context/CartContext';
 import { useWishlist }  from '../context/WishlistContext';
+import HeroProduct from './admin/HeroProduct';
 
 /* ── Stars ── */
 const Stars = ({ rating }) => (
@@ -29,48 +30,104 @@ const ProductCard = ({ product }) => {
   const wishlisted = isWishlisted(product._id);
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden group transition-all duration-300 hover:-translate-y-1"
-         style={{ boxShadow: 'var(--shadow-card)' }}>
-      <div className="relative overflow-hidden aspect-square"
-           style={{ backgroundColor: 'var(--color-soft)' }}>
-        <img src={product.image} alt={product.name}
-             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
-        <button onClick={() => {
-          if (wishlisted) { removeFromWishlist(product._id); toast.info('Removed from wishlist'); }
-          else            { addToWishlist(product);          toast.success('Added to wishlist 💛'); }
-        }} className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center
-                      justify-center shadow-md transition-transform duration-200 hover:scale-110">
-          <FiHeart size={14}
-            fill={wishlisted ? '#D4AF8C' : 'none'}
-            color={wishlisted ? 'var(--color-accent)' : 'var(--color-muted)'} />
-        </button>
-        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium capitalize"
-             style={{ backgroundColor: 'var(--color-primary)', color: 'white' }}>
-          {product.category}
-        </div>
-      </div>
-      <div className="p-4">
-        <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>{product.brand}</p>
-        <h3 className="text-sm font-semibold mb-2 line-clamp-2 leading-snug"
-            style={{ color: 'var(--color-dark)' }}>{product.name}</h3>
-        <div className="flex items-center gap-2 mb-3">
-          <Stars rating={product.rating} />
-          <span className="text-xs" style={{ color: 'var(--color-muted)' }}>({product.numReviews})</span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-lg font-semibold"
-                style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-serif)' }}>
-            ₹{product.price}
-          </span>
-          <button onClick={() => { addToCart(product); toast.success('Added to cart 🛒'); }}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium
-                             text-white transition-all duration-200 hover:opacity-90 active:scale-95"
-                  style={{ backgroundColor: 'var(--color-primary)' }}>
-            <FiShoppingCart size={12} /> Add
-          </button>
-        </div>
-      </div>
+   <div
+  className="bg-white rounded-2xl overflow-hidden group transition-all duration-300 hover:-translate-y-1"
+  style={{ boxShadow: 'var(--shadow-card)' }}
+  onMouseEnter={e => e.currentTarget.style.boxShadow = 'var(--shadow-soft)'}
+  onMouseLeave={e => e.currentTarget.style.boxShadow = 'var(--shadow-card)'}
+>
+  {/* ── Image Section ── */}
+  <div
+    className="relative overflow-hidden aspect-square "
+    style={{ backgroundColor: 'var(--color-soft)' }}
+  >
+    <img
+      src={product.image}
+      alt={product.name}
+      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+    />
+
+    {/* Wishlist Button */}
+    <button
+      onClick={() => {
+        if (wishlisted) { removeFromWishlist(product._id); toast.info('Removed from wishlist'); }
+        else            { addToWishlist(product);          toast.success('Added to wishlist 💛'); }
+      }}
+      className="absolute top-3 right-3 w-8 h-8 bg-white rounded-full flex items-center
+                 justify-center transition-transform duration-200 hover:scale-110"
+      style={{ boxShadow: '0 2px 8px rgba(58, 125, 68, 0.15)' }}
+    >
+      <FiHeart
+        size={14}
+        fill={wishlisted ? 'var(--color-accent)' : 'none'}
+        color={wishlisted ? 'var(--color-accent)' : 'var(--color-muted)'}
+      />
+    </button>
+
+    {/* Category Badge */}
+    <div
+      className="absolute top-3 left-3 px-2.5 py-1 rounded-full text-xs font-medium capitalize"
+      style={{
+        backgroundColor: 'var(--color-soft)',
+        color: 'var(--color-primary)',
+        border: '1px solid var(--color-secondary)',
+      }}
+    >
+      {product.category}
     </div>
+  </div>
+
+  {/* ── Card Body ── */}
+  <div className="p-4">
+
+    {/* Brand */}
+    <p
+      className="text-xs mb-1 tracking-wide uppercase"
+      style={{ color: 'var(--color-muted)' }}
+    >
+      {product.brand}
+    </p>
+
+    {/* Product Name */}
+    <h3
+      className="text-sm font-semibold mb-2 line-clamp-2 leading-snug"
+      style={{ color: 'var(--color-dark)' }}
+    >
+      {product.name}
+    </h3>
+
+    {/* Rating */}
+    <div className="flex items-center gap-2 mb-3">
+      <Stars rating={product.rating} />
+      <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+        ({product.numReviews})
+      </span>
+    </div>
+
+    {/* Price + Add to Cart */}
+    <div className="flex items-center justify-between">
+      <span
+        className="text-lg font-semibold"
+        style={{
+          color: 'var(--color-primary)',
+          fontFamily: 'var(--font-serif)',
+        }}
+      >
+        ₹{product.price}
+      </span>
+
+      <button
+        onClick={() => { addToCart(product); toast.success('Added to cart 🛒'); }}
+        className="flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium
+                   text-white transition-all duration-200 hover:opacity-90 active:scale-95"
+        style={{ backgroundColor: 'var(--color-primary)' }}
+      >
+        <FiShoppingCart size={12} /> Add
+      </button>
+    </div>
+
+  </div>
+</div>
   );
 };
 
@@ -137,145 +194,191 @@ const HomeMediaSection = ({ media }) => {
   if (!total) return null;
 
   return (
-    <section className="relative w-full overflow-hidden"
-             style={{ backgroundColor: 'var(--color-dark)' }}>
-      <div className="relative w-full"
-           style={{ height: 'clamp(260px, 42vw, 520px)' }}>
+  <section className="relative w-full overflow-hidden"
+           style={{ backgroundColor: 'var(--color-dark)' }}>
+    <div className="relative w-full"
+         style={{ height: 'clamp(200px, 31.25vw, 430px)' }}>
 
-        {/* Single <video> element — src swaps instead of remounting.
-            This keeps the browser in "user has interacted" context
-            which is required for play() to succeed without a gesture. */}
-        {current.type === 'video' && (
-          <video
-            ref={vidRef}
-            src={current.url}
-            autoPlay
-            muted
-            playsInline
-            loop={false}
-            onEnded={() => goTo(index + 1)}
-            onPlay={() => setPaused(false)}
-            onPause={(e) => {
-              // Ignore the transient pause that fires during src swap
-              if (!e.target.seeking) setPaused(true);
-            }}
-            style={{
-              position: 'absolute', inset: 0,
-              width: '100%', height: '100%',
-              objectFit: 'cover', objectPosition: 'center',
-              display: 'block',
-            }}
-          />
-        )}
+      {/* SLIDING TRACK */}
+      <div
+        style={{
+          display: 'flex',
+          width: `${total * 100}%`,
+          height: '100%',
+          transform: `translateX(-${(index * 100) / total}%)`,
+          transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+        }}
+      >
+        {media.map((item, i) => (
+          <div key={item._id} style={{ width: `${100 / total}%`, height: '100%', flexShrink: 0, position: 'relative' }}>
 
-        {current.type === 'image' && (
-          <img
-            key={current._id}
-            src={current.url}
-            alt={current.title}
-            style={{
-              position: 'absolute', inset: 0,
-              width: '100%', height: '100%',
-              objectFit: 'cover', objectPosition: 'center',
-              display: 'block', transition: 'opacity 0.7s',
-            }}
-          />
-        )}
-
-        {/* Gradient overlay */}
-        <div className="absolute inset-0"
-             style={{ background: 'linear-gradient(to right, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.15) 55%, transparent 100%)' }} />
-
-        {/* Text overlay */}
-        {(current.title || current.ctaText) && (
-          <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-16 max-w-2xl">
-            {current.title && (
-              <h2 className="text-2xl md:text-4xl font-semibold text-white leading-tight mb-2"
-                  style={{ fontFamily: 'var(--font-serif)' }}>
-                {current.title}
-              </h2>
+            {item.type === 'video' ? (
+              <video
+                ref={i === index ? vidRef : null}
+                src={item.url}
+                autoPlay={i === index}
+                muted
+                playsInline
+                loop={false}
+                onEnded={() => goTo(index + 1)}
+                onPlay={() => setPaused(false)}
+                onPause={(e) => { if (!e.target.seeking) setPaused(true); }}
+                style={{
+                  position: 'absolute', inset: 0,
+                  width: '100%', height: '100%',
+                  objectFit: 'cover', objectPosition: 'center',
+                  display: 'block',
+                }}
+              />
+            ) : (
+              <img
+                src={item.url}
+                alt={item.title}
+                style={{
+                  position: 'absolute', inset: 0,
+                  width: '100%', height: '100%',
+                  objectFit: 'cover',
+                  objectPosition: 'center',
+                  display: 'block',
+                }}
+              />
             )}
-            {current.subtitle && (
-              <p className="text-sm md:text-base text-white/80 mb-5">{current.subtitle}</p>
-            )}
-            {current.ctaText && (
-              <Link to={current.ctaLink || '/products'}
-                    className="flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium
-                               w-fit transition-all hover:opacity-90"
-                    style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-dark)' }}>
-                {current.ctaText} <FiArrowRight size={14} />
-              </Link>
+
+            {/* Text overlay per slide */}
+            {(item.title || item.ctaText) && (
+              <div className="absolute inset-0 flex flex-col justify-center px-8 md:px-16 max-w-2xl">
+                {item.title && (
+                  <h2 className="text-2xl md:text-4xl font-semibold text-white leading-tight mb-2"
+                      style={{ fontFamily: 'var(--font-serif)' }}>
+                    {item.title}
+                  </h2>
+                )}
+                {item.subtitle && (
+                  <p className="text-sm md:text-base text-white/80 mb-5">{item.subtitle}</p>
+                )}
+                {item.ctaText && (
+                  <Link to={item.ctaLink || '/products'}
+                        className="flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium w-fit transition-all hover:opacity-90"
+                        style={{ backgroundColor: 'var(--color-accent)', color: 'var(--color-dark)' }}>
+                    {item.ctaText} <FiArrowRight size={14} />
+                  </Link>
+                )}
+              </div>
             )}
           </div>
-        )}
-
-        {/* Prev / Next — only when more than 1 item */}
-        {total > 1 && (
-          <>
-            {[
-              { dir: -1, icon: <FiChevronLeft size={20} />,  pos: 'left-3'  },
-              { dir:  1, icon: <FiChevronRight size={20} />, pos: 'right-3' },
-            ].map(({ dir, icon, pos }) => (
-              <button key={dir} onClick={() => goTo(index + dir)}
-                className={`absolute top-1/2 -translate-y-1/2 ${pos} w-9 h-9 rounded-full
-                            flex items-center justify-center text-white transition-all
-                            hover:scale-110 active:scale-95`}
-                style={{ backgroundColor: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}>
-                {icon}
-              </button>
-            ))}
-
-            {/* Dots */}
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
-              {media.map((_, i) => (
-                <button key={i} onClick={() => goTo(i)}
-                  className="rounded-full transition-all duration-300"
-                  style={{
-                    width:           i === index ? '20px' : '6px',
-                    height:          '6px',
-                    backgroundColor: i === index ? 'white' : 'rgba(255,255,255,0.4)',
-                  }} />
-              ))}
-            </div>
-          </>
-        )}
-
-        {/* Video controls — mute + play/pause */}
-        {current.type === 'video' && (
-          <div className="absolute bottom-4 right-4 flex gap-2">
-            <button onClick={handleMuteToggle}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white
-                         transition-all hover:scale-110"
-              style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
-              {muted ? <FiVolumeX size={13} /> : <FiVolume2 size={13} />}
-            </button>
-            <button onClick={handlePlayPause}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-white
-                         transition-all hover:scale-110"
-              style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
-              {paused
-                ? <FiPlay size={13} />
-                : <svg width="13" height="13" viewBox="0 0 24 24" fill="white">
-                    <rect x="6" y="4" width="4" height="16" rx="1"/>
-                    <rect x="14" y="4" width="4" height="16" rx="1"/>
-                  </svg>
-              }
-            </button>
-          </div>
-        )}
-
-        {/* Counter badge */}
-        <div className="absolute top-4 right-4 px-2.5 py-1 rounded-full text-xs font-medium
-                        text-white flex items-center gap-1"
-             style={{ backgroundColor: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}>
-          {current.type === 'video' ? <FiPlay size={10} /> : <span>📸</span>}
-          {index + 1} / {total}
-        </div>
-
+        ))}
       </div>
-    </section>
+
+      {/* Prev / Next */}
+      {total > 1 && (
+        <>
+          {[
+            { dir: -1, icon: <FiChevronLeft size={20} />,  pos: 'left-3'  },
+            { dir:  1, icon: <FiChevronRight size={20} />, pos: 'right-3' },
+          ].map(({ dir, icon, pos }) => (
+            <button key={dir} onClick={() => goTo(index + dir)}
+              className={`absolute top-1/2 -translate-y-1/2 ${pos} w-9 h-9 rounded-full
+                          flex items-center justify-center text-white transition-all
+                          hover:scale-110 active:scale-95`}
+              style={{ backgroundColor: 'rgba(0,0,0,0.35)', backdropFilter: 'blur(4px)' }}>
+              {icon}
+            </button>
+          ))}
+
+          {/* Dots */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5">
+            {media.map((_, i) => (
+              <button key={i} onClick={() => goTo(i)}
+                className="rounded-full transition-all duration-300"
+                style={{
+                  width:           i === index ? '20px' : '6px',
+                  height:          '6px',
+                  backgroundColor: i === index ? 'white' : 'rgba(255,255,255,0.4)',
+                }} />
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Video controls */}
+      {current.type === 'video' && (
+        <div className="absolute bottom-4 right-4 flex gap-2">
+          <button onClick={handleMuteToggle}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-all hover:scale-110"
+            style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+            {muted ? <FiVolumeX size={13} /> : <FiVolume2 size={13} />}
+          </button>
+          <button onClick={handlePlayPause}
+            className="w-8 h-8 rounded-full flex items-center justify-center text-white transition-all hover:scale-110"
+            style={{ backgroundColor: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)' }}>
+            {paused
+              ? <FiPlay size={13} />
+              : <svg width="13" height="13" viewBox="0 0 24 24" fill="white">
+                  <rect x="6" y="4" width="4" height="16" rx="1"/>
+                  <rect x="14" y="4" width="4" height="16" rx="1"/>
+                </svg>
+            }
+          </button>
+        </div>
+      )}
+
+    </div>
+  </section>
+);
+
+
+};
+
+// Lightweight version — just the sliding images, no controls/dots/text
+export const HomeMediaBackground = ({ media }) => {
+  const [index, setIndex] = useState(0);
+  const timerRef = useRef(null);
+  const total = media.length;
+
+  const goTo = (i) => setIndex((i + total) % total);
+
+  useEffect(() => {
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => goTo(index + 1), 5000);
+    return () => clearTimeout(timerRef.current);
+  }, [index]);
+
+  if (!total) return null;
+
+  return (
+    <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
+      {/* Sliding track */}
+      <div style={{
+        display: 'flex',
+        width: `${total * 100}%`,
+        height: '100%',
+        transform: `translateX(-${(index * 100) / total}%)`,
+        transition: 'transform 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+        pointerEvents: 'none',
+      }}>
+        {media.map((item) => (
+          <div key={item._id} style={{ width: `${100 / total}%`, height: '100%', flexShrink: 0, position: 'relative' }}>
+            {item.type === 'video' ? (
+              <video
+                src={item.url}
+                autoPlay muted playsInline loop
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <img
+                src={item.url}
+                alt=""
+                aria-hidden="true"
+                style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 };
+
 
 /* ══════════════════════════════════════════
    HOME PAGE
@@ -318,6 +421,8 @@ export default function Home() {
 
   return (
     <div style={{ backgroundColor: 'var(--color-cream)' }}>
+       {/* ── HOME MEDIA (images + videos uploaded by admin) ── */}
+      {homeMedia.length > 0 && <HomeMediaSection media={homeMedia} />}
 
       {/* ── HERO ── */}
       <section className="max-w-6xl mx-auto px-4 py-16 md:py-24">
@@ -371,7 +476,7 @@ export default function Home() {
           </div>
 
           {/* Right card stack */}
-          <div className="relative flex items-center justify-center h-96 md:h-auto">
+          {/* <div className="relative flex items-center justify-center h-96 md:h-auto">
             <div className="absolute w-56 h-72 rounded-3xl rotate-6 opacity-40"
                  style={{ backgroundColor: 'var(--color-secondary)' }} />
             <div className="absolute w-56 h-72 rounded-3xl -rotate-3 opacity-60"
@@ -400,7 +505,9 @@ export default function Home() {
               <p className="text-xs font-medium" style={{ color: 'var(--color-dark)' }}>🚚 Free delivery</p>
               <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Orders above ₹999</p>
             </div>
-          </div>
+          </div> */}
+          <HeroProduct />
+
         </div>
       </section>
 
@@ -421,7 +528,7 @@ export default function Home() {
 
       {/* ── CATEGORIES ── */}
       <section className="max-w-6xl mx-auto px-4 py-16">
-        <div className="flex items-end justify-between mb-8">
+        <div className="flex items-end justify-between mb-8 ">
           <div>
             <p className="text-xs font-medium mb-1 uppercase tracking-widest"
                style={{ color: 'var(--color-accent)' }}>Browse by</p>
@@ -439,8 +546,11 @@ export default function Home() {
           {categories.map(({ name, slug, emoji, desc }) => (
             <Link key={slug} to={`/products?category=${slug}`}
                   className="group flex flex-col items-center text-center p-5 rounded-2xl
-                             bg-white transition-all duration-300 hover:-translate-y-1"
-                  style={{ boxShadow: 'var(--shadow-card)' }}>
+                              transition-all duration-300 hover:-translate-y-1"
+                   style={{
+    backgroundColor: 'var(--color-soft)',  
+    boxShadow: 'var(--shadow-card)',
+  }}>
               <div className="text-3xl mb-3 transition-transform duration-300 group-hover:scale-110">
                 {emoji}
               </div>
@@ -452,13 +562,12 @@ export default function Home() {
       </section>
 
       
-      {/* ── HOME MEDIA (images + videos uploaded by admin) ── */}
-      {homeMedia.length > 0 && <HomeMediaSection media={homeMedia} />}
+     
 
 
       {/* ── FEATURED PRODUCTS ── */}
-      <section className="mt-10 max-w-6xl mx-auto px-4 pb-16">
-        <div className="flex items-end justify-between mb-8">
+      <section className="mt-10 max-w-6xl mx-auto px-4 pb-16 ">
+        <div className="flex items-end justify-between mb-8 ">
           <div>
             <p className="text-xs font-medium mb-1 uppercase tracking-widest"
                style={{ color: 'var(--color-accent)' }}>Hand picked</p>
@@ -577,8 +686,11 @@ export default function Home() {
             { name: 'Ananya M.',   initial: 'A', review: "Best shampoo I've ever used. My scalp feels so clean and fresh, and my hair has never looked this shiny before.",         rating: 4 },
             { name: 'Kavitha R.', initial: 'K', review: 'The hair mask is absolutely luxurious. My hair feels so soft and the smell is incredible. Totally worth every rupee!', rating: 5 },
           ].map(({ name, initial, review, rating }) => (
-            <div key={name} className="bg-white rounded-2xl p-6"
-                 style={{ boxShadow: 'var(--shadow-card)' }}>
+            <div key={name} className=" rounded-2xl p-6"
+                 style={{
+    backgroundColor: 'var(--color-soft)', 
+    boxShadow: 'var(--shadow-card)',
+  }}>
               <Stars rating={rating} />
               <p className="text-sm leading-relaxed my-4 italic"
                  style={{ color: 'var(--color-muted)' }}>"{review}"</p>
