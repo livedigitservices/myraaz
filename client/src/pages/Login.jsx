@@ -285,8 +285,9 @@ const handleSendOTP = async () => {
                 <div className="flex justify-between items-center mb-1.5">
                   <label className="text-sm font-medium"
                          style={{ color: 'var(--color-dark)' }}>Password</label>
-                  <a href="#" className="text-xs hover:underline"
-                     style={{ color: 'var(--color-primary)' }}>Forgot password?</a>
+                  <Link to="/forgot-password" className="text-xs hover:underline"
+      style={{ color: 'var(--color-primary)' }}>Forgot password?</Link>
+
                 </div>
                 <div className="relative">
                   <FiLock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2"

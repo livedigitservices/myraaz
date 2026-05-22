@@ -53,9 +53,9 @@ export default function Navbar() {
             {/* <span className="text-white text-xs font-bold">M</span> */}
             <img src="../public/raaz_favicon.svg" alt="logo" />
           </div>
-          <span className="text-xl font-semibold"
-                style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
-            myRaaz
+          <span className="text-xl font-semibold uppercase"
+                style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-primary)' }}>
+            my Raaz
           </span>
         </Link>
 

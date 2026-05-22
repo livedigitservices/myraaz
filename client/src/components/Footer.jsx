@@ -1,6 +1,71 @@
 import { Link } from 'react-router-dom';
 import { FiInstagram, FiTwitter, FiFacebook } from 'react-icons/fi';
 
+const HELP_LINKS = [
+  { label: 'About Us',        to: '/about'           },
+  { label: 'Contact',         to: '/contact'         },
+  { label: 'Shipping Policy', to: '/shipping-policy' },
+  { label: 'Returns',         to: '/returns'         },
+  { label: 'FAQ',             to: '/faq'             },
+];
+
+const SHOP_LINKS = [
+  { label: 'Hair Oils',    to: '/products?category=hair-oils'    },
+  { label: 'Shampoos',     to: '/products?category=shampoos'     },
+  { label: 'Conditioners', to: '/products?category=conditioners' },
+  { label: 'Hair Masks',   to: '/products?category=hair-masks'   },
+  { label: 'Serums',       to: '/products?category=serums'       },
+];
+
+const SOCIAL_LINKS = [
+  { label: 'Instagram', href: 'https://instagram.com/tharuntharun20', Icon: FiInstagram },
+  { label: 'Twitter',   href: 'https://twitter.com/myraaz',           Icon: FiTwitter  },
+  { label: 'Facebook',  href: 'https://facebook.com/myraaz',          Icon: FiFacebook },
+];
+
+function SocialButton({ href, label, Icon }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      aria-label={label}
+      className="w-10 h-10 rounded-full flex items-center justify-center
+                 bg-white/10 transition-all duration-300 hover:scale-110"
+      onMouseEnter={e => {
+        e.currentTarget.style.backgroundColor = 'var(--color-primary)';
+        e.currentTarget.style.color = 'white';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
+        e.currentTarget.style.color = '';
+      }}
+    >
+      <Icon size={18} />
+    </a>
+  );
+}
+
+function FooterNavColumn({ title, links }) {
+  return (
+    <div>
+      <h4 className="text-sm font-semibold text-dark mb-4">{title}</h4>
+      <ul className="space-y-2">
+        {links.map(({ label, to }) => (
+          <li key={to}>
+            <Link
+              to={to}
+              className="text-sm text-muted hover:text-primary transition-colors"
+            >
+              {label}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 export default function Footer() {
   return (
     <footer className="bg-white border-t border-soft">
@@ -16,98 +81,31 @@ export default function Footer() {
               <span className="font-serif text-xl text-dark font-semibold">myRaaz</span>
             </div>
             <p className="text-sm text-muted leading-relaxed max-w-xs">
-              Premium beauty and personal care products crafted with natural ingredients for everyday wellness.
+              Premium beauty and personal care products crafted with natural
+              ingredients for everyday wellness.
             </p>
             <div className="flex gap-4 mt-4">
-               <a
-    href="https://instagram.com/tharuntharun20"
-    target="_blank"
-    rel="noopener noreferrer"
-    aria-label="Instagram"
-     className="w-10 h-10 rounded-full flex items-center justify-center
-             bg-white/10 transition-all duration-300 hover:scale-110"
-  onMouseEnter={e => {
-    e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-    e.currentTarget.style.color = 'white';
-  }}
-  onMouseLeave={e => {
-    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-    e.currentTarget.style.color = '';
-  }}
-  >
-    <FiInstagram size={18} />
-  </a>
-
-  {/* Twitter / X */}
-  <a
-    href="https://twitter.com/myraaz"
-  target="_blank"
-  rel="noopener noreferrer"
-  aria-label="Twitter"
-  className="w-10 h-10 rounded-full flex items-center justify-center
-             bg-white/10 transition-all duration-300 hover:scale-110"
-  onMouseEnter={e => {
-    e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-    e.currentTarget.style.color = 'white';
-  }}
-  onMouseLeave={e => {
-    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-    e.currentTarget.style.color = '';
-  }}
-  >
-    <FiTwitter size={18} />
-  </a>
-
-  {/* Facebook */}
-  <a
-    href="https://facebook.com/myraaz"
-    target="_blank"
-    rel="noopener noreferrer"
-    aria-label="Facebook"
-     className="w-10 h-10 rounded-full flex items-center justify-center
-             bg-white/10 transition-all duration-300 hover:scale-110"
-  onMouseEnter={e => {
-    e.currentTarget.style.backgroundColor = 'var(--color-primary)';
-    e.currentTarget.style.color = 'white';
-  }}
-  onMouseLeave={e => {
-    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.1)';
-    e.currentTarget.style.color = '';
-  }}
-  >
-    <FiFacebook size={18} />
-  </a>
+              {SOCIAL_LINKS.map(s => (
+                <SocialButton key={s.label} {...s} />
+              ))}
             </div>
           </div>
 
           {/* Shop */}
-          <div>
-            <h4 className="text-sm font-semibold text-dark mb-4">Shop</h4>
-            <ul className="space-y-2">
-              {['Hair Oils', 'Shampoos', 'Conditioners', 'Hair Masks', 'Serums'].map(item => (
-                <li key={item}>
-                  <Link to="/products" className="text-sm text-muted hover:text-primary transition-colors">{item}</Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <FooterNavColumn title="Shop" links={SHOP_LINKS} />
 
           {/* Help */}
-          <div>
-            <h4 className="text-sm font-semibold text-dark mb-4">Help</h4>
-            <ul className="space-y-2">
-              {['About Us', 'Contact', 'Shipping Policy', 'Returns', 'FAQ'].map(item => (
-                <li key={item}>
-                  <a href="#" className="text-sm text-muted hover:text-primary transition-colors">{item}</a>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <FooterNavColumn title="Help" links={HELP_LINKS} />
+
         </div>
 
         <div className="border-t border-soft mt-10 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
-          <p className="text-xs text-muted">© {new Date().getFullYear()} myRaaz. All rights reserved.</p>
-          <p className="text-xs text-muted">♥ Inspired by nature. Crafted for modern beauty.  </p>
+          <p className="text-xs text-muted">
+            © {new Date().getFullYear()} myRaaz. All rights reserved.
+          </p>
+          <p className="text-xs text-muted">
+            ♥ Inspired by nature. Crafted for modern beauty.
+          </p>
         </div>
       </div>
     </footer>

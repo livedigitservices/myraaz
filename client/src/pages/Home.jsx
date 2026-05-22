@@ -476,36 +476,7 @@ export default function Home() {
           </div>
 
           {/* Right card stack */}
-          {/* <div className="relative flex items-center justify-center h-96 md:h-auto">
-            <div className="absolute w-56 h-72 rounded-3xl rotate-6 opacity-40"
-                 style={{ backgroundColor: 'var(--color-secondary)' }} />
-            <div className="absolute w-56 h-72 rounded-3xl -rotate-3 opacity-60"
-                 style={{ backgroundColor: 'var(--color-accent)' }} />
-            <div className="relative w-60 h-76 rounded-3xl overflow-hidden shadow-2xl"
-                 style={{ backgroundColor: 'var(--color-soft)' }}>
-              <div className="w-full h-full flex flex-col items-center justify-center p-6 gap-4">
-                <div className="text-6xl">🌿</div>
-                <div className="text-center">
-                  <p className="font-semibold text-sm" style={{ color: 'var(--color-dark)' }}>Argan Oil Elixir</p>
-                  <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>Best Seller</p>
-                </div>
-                <div className="w-full p-3 rounded-2xl text-center" style={{ backgroundColor: 'white' }}>
-                  <p className="font-semibold text-sm" style={{ color: 'var(--color-primary)' }}>₹599</p>
-                </div>
-              </div>
-            </div>
-            <div className="absolute top-4 right-4 bg-white rounded-2xl px-3 py-2 shadow-lg">
-              <div className="flex items-center gap-1.5">
-                <Stars rating={4.8} />
-                <span className="text-xs font-medium" style={{ color: 'var(--color-dark)' }}>4.8</span>
-              </div>
-              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>2.4k reviews</p>
-            </div>
-            <div className="absolute bottom-8 left-0 bg-white rounded-2xl px-3 py-2 shadow-lg">
-              <p className="text-xs font-medium" style={{ color: 'var(--color-dark)' }}>🚚 Free delivery</p>
-              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Orders above ₹999</p>
-            </div>
-          </div> */}
+        
           <HeroProduct />
 
         </div>

@@ -27,6 +27,12 @@ import AdminCoupons from './pages/admin/AdminCoupons';
 import AdminReturns from './pages/admin/AdminReturns';
 import Wallet from './pages/user/Wallet';
 import AdminHomeMedia from './pages/admin/AdminHomeMedia';
+import ForgotPassword from './pages/ForgotPassword';
+import AboutPage        from './pages/AboutPage';
+import ContactPage      from './pages/ContactPage';
+import ShippingPolicyPage from './pages/ShippingPolicyPage';
+import ReturnsPage      from './pages/ReturnsPage';
+import FaqPage          from './pages/FaqPage';
 
 export default function App() {
   return (
@@ -40,6 +46,7 @@ export default function App() {
             <Route path="/products/:id" element={<ProductDetail />} />
             <Route path="/login"        element={<Login />} />
             <Route path="/register"     element={<Register />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
 
             <Route path="/cart"     element={<PrivateRoute><Cart /></PrivateRoute>} />
             <Route path="/checkout" element={<PrivateRoute><Checkout /></PrivateRoute>} />
@@ -59,6 +66,11 @@ export default function App() {
             <Route path="/admin/returns" element={<AdminRoute><AdminReturns /></AdminRoute>} />
             <Route path="/dashboard/wallet" element={<PrivateRoute><Wallet /></PrivateRoute>} />
             <Route path="/admin/home-media" element={<AdminHomeMedia />} />
+            <Route path="/about"           element={<AboutPage />} />
+            <Route path="/contact"         element={<ContactPage />} />
+            <Route path="/shipping-policy" element={<ShippingPolicyPage />} />
+            <Route path="/returns"         element={<ReturnsPage />} />
+            <Route path="/faq"             element={<FaqPage />} />
           </Routes>
         </main>
         <Footer />
