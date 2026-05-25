@@ -14,7 +14,7 @@ import Checkout      from './pages/Checkout';
 import Wishlist      from './pages/Wishlist';
 import Login         from './pages/Login';
 import Register      from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
+import ForgotPassword from './pages/Forgotpassword';
 
 import UserDashboard from './pages/user/UserDashboard';
 import OrderHistory  from './pages/user/OrderHistory';
@@ -30,11 +30,11 @@ import AdminUsers     from './pages/admin/AdminUsers';
 import AdminCoupons   from './pages/admin/AdminCoupons';
 import AdminReturns   from './pages/admin/AdminReturns';
 import AdminHomeMedia from './pages/admin/AdminHomeMedia';
-import AboutPage        from './pages/AboutPage';
-import ContactPage      from './pages/ContactPage';
-import ShippingPolicyPage from './pages/ShippingPolicyPage';
-import ReturnsPage      from './pages/ReturnsPage';
-import FaqPage          from './pages/FaqPage';
+import AboutPage        from './pages/Aboutpage';
+import ContactPage      from './pages/Contactpage';
+import ShippingPolicyPage from './pages/Shippingpolicypage';
+import ReturnsPage      from './pages/Returnspage';
+import FaqPage          from './pages/Faqpage';
 
 /* Pages where the USER mobile nav should NOT appear */
 const HIDE_USER_NAV = ['/', '/login', '/register', '/forgot-password', '/checkout'];
