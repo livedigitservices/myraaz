@@ -483,7 +483,7 @@ export default function Home() {
       </section>
 
       {/* ── PERKS BAR ── */}
-      <section style={{ backgroundColor: 'var(--color-primary)' }} className="py-8">
+      <section style={{ backgroundColor: 'var(--color-primary)' }} className="py-8 ">
         <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6">
           {perks.map(({ icon, title, desc }) => (
             <div key={title} className="flex items-center gap-3">

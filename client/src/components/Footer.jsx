@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FiInstagram, FiTwitter, FiFacebook } from 'react-icons/fi';
+import { FiInstagram, FiTwitter, FiFacebook, FiMail } from 'react-icons/fi';
 
 const HELP_LINKS = [
   { label: 'About Us',        to: '/about'           },
@@ -21,6 +21,8 @@ const SOCIAL_LINKS = [
   { label: 'Instagram', href: 'https://instagram.com/tharuntharun20', Icon: FiInstagram },
   { label: 'Twitter',   href: 'https://twitter.com/myraaz',           Icon: FiTwitter  },
   { label: 'Facebook',  href: 'https://facebook.com/myraaz',          Icon: FiFacebook },
+  { label: 'Gmail',     href: 'mailto:myraazofficial@gmail.com',           Icon: FiMail },
+  
 ];
 
 function SocialButton({ href, label, Icon }) {
