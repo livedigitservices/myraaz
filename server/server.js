@@ -11,7 +11,20 @@ const app = express();
 // Razorpay webhook needs raw body — must come BEFORE express.json()
 app.use('/api/payment/webhook/razorpay', express.raw({ type: 'application/json' }));
 
-app.use(cors());
+const corsOptions = {
+  origin: [
+    'https://my-raaz-ecommerce.vercel.app',
+    'http://localhost:5173', // for local dev
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+
+// Explicitly handle preflight requests
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 app.use('/api/auth',     require('./routes/authRoutes'));
