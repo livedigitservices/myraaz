@@ -1,4 +1,3 @@
-// controllers/forgotPasswordController.js
 const bcrypt     = require('bcryptjs');
 const crypto     = require('crypto');
 const { Resend } = require('resend');
@@ -7,13 +6,12 @@ const User       = require('../models/User');
 const resend   = new Resend(process.env.RESEND_API_KEY);
 const otpStore = new Map();
 
-/* ── Helpers ── */
 const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 
 const sendOTPEmail = async (email, otp) => {
   await resend.emails.send({
     from:    'myRaaz <onboarding@resend.dev>',
-    to:      'helloworldhtml4@gmail.com', // replace with your Resend account email
+    to:      email,                              // ✅ FIX 1: use actual email
     subject: 'Password Reset OTP – myRaaz',
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;
@@ -36,9 +34,7 @@ const sendOTPEmail = async (email, otp) => {
   });
 };
 
-/* ══════════════════════════
-   STEP 1 — Send OTP
-══════════════════════════ */
+/* STEP 1 — Send OTP */
 const forgotPassword = async (req, res) => {
   try {
     const email = req.body.email?.toLowerCase().trim();
@@ -48,43 +44,40 @@ const forgotPassword = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user)
-      // Always 200 to prevent email enumeration
       return res.status(200).json({ message: 'If this email is registered, an OTP has been sent.' });
 
-    // Rate limit: allow resend only after 60s
+    // ✅ FIX 2: correct rate-limit — block if OTP was sent less than 60s ago
     const existing = otpStore.get(email);
-    if (existing && existing.expiresAt - 9 * 60 * 1000 > Date.now())
-      return res.status(429).json({ message: 'Please wait before requesting a new OTP' });
+    if (existing && Date.now() < existing.expiresAt - 9 * 60 * 1000)
+      return res.status(429).json({ message: 'Please wait before requesting a new OTP.' });
 
     const otp       = generateOTP();
     const hashedOtp = await bcrypt.hash(otp, 10);
 
     otpStore.set(email, {
       hashedOtp,
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
+      expiresAt: Date.now() + 10 * 60 * 1000,
       verified:  false,
       attempts:  0,
     });
 
     await sendOTPEmail(email, otp);
 
-    res.status(200).json({ message: 'OTP sent to your email address' });
+    res.status(200).json({ message: 'OTP sent to your email address.' });
   } catch (err) {
     console.error('forgotPassword error:', err);
     res.status(500).json({ message: 'Failed to send OTP. Please try again.' });
   }
 };
 
-/* ══════════════════════════
-   STEP 2 — Verify OTP
-══════════════════════════ */
+/* STEP 2 — Verify OTP */
 const verifyResetOTP = async (req, res) => {
   try {
     const email = req.body.email?.toLowerCase().trim();
     const { otp } = req.body;
 
     if (!email || !otp)
-      return res.status(400).json({ message: 'Email and OTP are required' });
+      return res.status(400).json({ message: 'Email and OTP are required.' });
 
     const record = otpStore.get(email);
 
@@ -109,35 +102,32 @@ const verifyResetOTP = async (req, res) => {
       });
     }
 
-    // Mark verified, give 5 min window to reset
     record.verified  = true;
     record.expiresAt = Date.now() + 5 * 60 * 1000;
 
-    res.status(200).json({ message: 'OTP verified successfully' });
+    res.status(200).json({ message: 'OTP verified successfully.' });
   } catch (err) {
     console.error('verifyResetOTP error:', err);
     res.status(500).json({ message: 'Verification failed. Please try again.' });
   }
 };
 
-/* ══════════════════════════
-   STEP 3 — Reset Password
-══════════════════════════ */
+/* STEP 3 — Reset Password */
 const resetPassword = async (req, res) => {
   try {
     const email = req.body.email?.toLowerCase().trim();
     const { otp, newPassword } = req.body;
 
     if (!email || !otp || !newPassword)
-      return res.status(400).json({ message: 'All fields are required' });
+      return res.status(400).json({ message: 'All fields are required.' });
 
-    if (newPassword.length < 6)
-      return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    if (newPassword.length < 8)                          // ✅ FIX 3: 6 → 8 to match frontend
+      return res.status(400).json({ message: 'Password must be at least 8 characters.' });
 
     const record = otpStore.get(email);
 
     if (!record || !record.verified)
-      return res.status(400).json({ message: 'Please complete OTP verification first' });
+      return res.status(400).json({ message: 'Please complete OTP verification first.' });
 
     if (Date.now() > record.expiresAt) {
       otpStore.delete(email);
@@ -152,15 +142,14 @@ const resetPassword = async (req, res) => {
 
     const user = await User.findOne({ email });
     if (!user)
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: 'User not found.' });
 
-    // ✅ Assign plain text — pre-save hook in User.js handles hashing automatically
     user.password = newPassword;
     await user.save();
 
     otpStore.delete(email);
 
-    res.status(200).json({ message: 'Password reset successfully' });
+    res.status(200).json({ message: 'Password reset successfully.' });
   } catch (err) {
     console.error('resetPassword error:', err);
     res.status(500).json({ message: 'Failed to reset password. Please try again.' });

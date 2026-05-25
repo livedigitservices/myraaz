@@ -12,16 +12,24 @@ const OTPInput = ({ value, onChange }) => {
   const digits = value.split('').concat(Array(6).fill('')).slice(0, 6);
 
   const handleKey = (e, i) => {
-    const key = e.key;
-    if (key === 'Backspace') {
+    if (e.key === 'Backspace') {
       const next = value.slice(0, i) + value.slice(i + 1);
       onChange(next);
       if (i > 0) document.getElementById(`fp-otp-${i - 1}`)?.focus();
       return;
     }
-    if (!/^\d$/.test(key)) return;
-    const next = value.slice(0, i) + key + value.slice(i + 1);
-    onChange(next.slice(0, 6));
+    if (!/^\d$/.test(e.key)) return;
+    const next = (value.slice(0, i) + e.key + value.slice(i + 1)).slice(0, 6);
+    onChange(next);
+    if (i < 5) document.getElementById(`fp-otp-${i + 1}`)?.focus();
+  };
+
+  // ✅ FIX 4: proper onChange so direct typing works
+  const handleChange = (e, i) => {
+    const val = e.target.value.replace(/\D/g, '');
+    if (!val) return;
+    const next = (value.slice(0, i) + val.slice(-1) + value.slice(i + 1)).slice(0, 6);
+    onChange(next);
     if (i < 5) document.getElementById(`fp-otp-${i + 1}`)?.focus();
   };
 
@@ -43,8 +51,8 @@ const OTPInput = ({ value, onChange }) => {
           maxLength={1}
           value={d}
           onKeyDown={(e) => handleKey(e, i)}
+          onChange={(e) => handleChange(e, i)}        // ✅ FIX 4
           onPaste={handlePaste}
-          onChange={() => {}}
           className="w-11 h-12 text-center text-lg font-bold rounded-xl border-2 outline-none transition-all"
           style={{
             borderColor: d ? 'var(--color-primary)' : 'var(--color-soft)',
@@ -65,7 +73,7 @@ const PasswordStrength = ({ password }) => {
     { label: 'One number',            pass: /\d/.test(password) },
     { label: 'One special character', pass: /[^A-Za-z0-9]/.test(password) },
   ];
-  const score = checks.filter((c) => c.pass).length;
+  const score  = checks.filter((c) => c.pass).length;
   const colors = ['#e5e7eb', '#ef4444', '#f59e0b', '#3b82f6', '#22c55e'];
   const labels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
 
@@ -73,7 +81,6 @@ const PasswordStrength = ({ password }) => {
 
   return (
     <div className="mt-2 space-y-2">
-      {/* Bar */}
       <div className="flex gap-1">
         {[1, 2, 3, 4].map((i) => (
           <div
@@ -83,9 +90,7 @@ const PasswordStrength = ({ password }) => {
           />
         ))}
       </div>
-      <p className="text-xs font-medium" style={{ color: colors[score] }}>
-        {labels[score]}
-      </p>
+      <p className="text-xs font-medium" style={{ color: colors[score] }}>{labels[score]}</p>
       <div className="grid grid-cols-2 gap-x-3 gap-y-1">
         {checks.map(({ label, pass }) => (
           <div key={label} className="flex items-center gap-1.5">
@@ -109,7 +114,6 @@ const PasswordStrength = ({ password }) => {
   );
 };
 
-/* ── Spinner ── */
 const Spinner = () => (
   <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -117,33 +121,21 @@ const Spinner = () => (
   </svg>
 );
 
-/* ══════════════════════════════════════
-   STEPS:
-   0 → Enter Email
-   1 → Verify OTP
-   2 → Reset Password
-   3 → Success
-══════════════════════════════════════ */
 export default function ForgotPassword() {
   const navigate = useNavigate();
-  const [step, setStep]         = useState(0);
-  const [loading, setLoading]   = useState(false);
+  const [step, setStep]       = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  /* Step 0 */
-  const [email, setEmail]       = useState('');
-
-  /* Step 1 */
-  const [otp, setOtp]           = useState('');
+  const [email, setEmail]     = useState('');
+  const [otp, setOtp]         = useState('');
   const [resendTimer, setResendTimer] = useState(0);
 
-  /* Step 2 */
-  const [passwords, setPasswords] = useState({ newPassword: '', confirmPassword: '' });
-  const [showNew, setShowNew]     = useState(false);
+  const [passwords, setPasswords]     = useState({ newPassword: '', confirmPassword: '' });
+  const [showNew, setShowNew]         = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
-  /* ── Resend timer helper ── */
   const startResendTimer = () => {
-    setResendTimer(30);
+    setResendTimer(60);
     const interval = setInterval(() => {
       setResendTimer((t) => {
         if (t <= 1) { clearInterval(interval); return 0; }
@@ -152,7 +144,7 @@ export default function ForgotPassword() {
     }, 1000);
   };
 
-  /* ── STEP 0: Send reset OTP ── */
+  /* STEP 0: Send OTP */
   const handleSendOTP = async (e) => {
     e?.preventDefault();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
@@ -170,7 +162,7 @@ export default function ForgotPassword() {
     }
   };
 
-  /* ── STEP 1: Verify OTP ── */
+  /* STEP 1: Verify OTP */
   const handleVerifyOTP = async () => {
     if (otp.length !== 6) return toast.error('Please enter the 6-digit OTP');
     try {
@@ -185,7 +177,13 @@ export default function ForgotPassword() {
     }
   };
 
-  /* ── STEP 2: Reset Password ── */
+  /* STEP 1: Resend OTP */
+  const handleResendOTP = async () => {
+    setOtp('');                                          // ✅ FIX 5: clear old OTP
+    await handleSendOTP();
+  };
+
+  /* STEP 2: Reset Password */
   const handleResetPassword = async (e) => {
     e?.preventDefault();
     const { newPassword, confirmPassword } = passwords;
@@ -202,7 +200,7 @@ export default function ForgotPassword() {
       /\d/.test(newPassword) &&
       /[^A-Za-z0-9]/.test(newPassword);
     if (!isStrong)
-      return toast.error('Password is too weak. Add uppercase, number & special character.');
+      return toast.error('Add uppercase, number & special character.');
 
     try {
       setLoading(true);
@@ -216,13 +214,12 @@ export default function ForgotPassword() {
     }
   };
 
-  /* ── Step config for progress indicator ── */
   const stepLabels = ['Email', 'Verify OTP', 'New Password'];
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: 'var(--color-cream)' }}>
 
-      {/* ── LEFT — decorative (same as Login) ── */}
+      {/* LEFT — decorative */}
       <div
         className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative overflow-hidden"
         style={{ backgroundColor: 'var(--color-primary)' }}
@@ -232,7 +229,6 @@ export default function ForgotPassword() {
         <div className="absolute -bottom-20 -right-10 w-96 h-96 rounded-full opacity-10"
              style={{ backgroundColor: 'var(--color-dark)' }} />
 
-        {/* Logo */}
         <div className="flex items-center gap-3 relative z-10">
           <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
             <span className="font-bold text-sm" style={{ color: 'var(--color-primary)' }}>M</span>
@@ -242,25 +238,21 @@ export default function ForgotPassword() {
           </span>
         </div>
 
-        {/* Center content */}
         <div className="relative z-10">
-          <h2
-            className="text-4xl font-semibold text-white leading-snug mb-4"
-            style={{ fontFamily: 'var(--font-serif)' }}
-          >
+          <h2 className="text-4xl font-semibold text-white leading-snug mb-4"
+              style={{ fontFamily: 'var(--font-serif)' }}>
             Account recovery made simple and secure.
           </h2>
           <p className="text-white/70 text-sm leading-relaxed">
             We'll send a one-time code to your email. Follow the steps to securely reset your password.
           </p>
 
-          {/* Steps preview */}
           <div className="mt-8 space-y-3">
             {[
-              { step: '1', title: 'Enter your email',      desc: 'We verify your account exists'       },
-              { step: '2', title: 'Enter the OTP',         desc: 'Check your inbox for a 6-digit code' },
-              { step: '3', title: 'Set a new password',    desc: 'Choose a strong, secure password'    },
-            ].map(({ step: s, title, desc }) => (
+              { s: '1', title: 'Enter your email',   desc: 'We verify your account exists'       },
+              { s: '2', title: 'Enter the OTP',       desc: 'Check your inbox for a 6-digit code' },
+              { s: '3', title: 'Set a new password',  desc: 'Choose a strong, secure password'    },
+            ].map(({ s, title, desc }) => (
               <div key={s} className="flex items-start gap-3">
                 <div
                   className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 mt-0.5"
@@ -282,38 +274,31 @@ export default function ForgotPassword() {
         </p>
       </div>
 
-      {/* ── RIGHT — form ── */}
+      {/* RIGHT — form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6">
         <div className="w-full max-w-md">
 
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: 'var(--color-primary)' }}
-            >
+            <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                 style={{ backgroundColor: 'var(--color-primary)' }}>
               <span className="text-white text-xs font-bold">M</span>
             </div>
-            <span
-              className="text-xl font-semibold"
-              style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}
-            >
+            <span className="text-xl font-semibold"
+                  style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
               myRaaz
             </span>
           </div>
 
-          {/* Back to login (not shown on success) */}
           {step < 3 && (
-            <Link
-              to="/login"
-              className="inline-flex items-center gap-1.5 text-sm mb-6 hover:underline"
-              style={{ color: 'var(--color-muted)' }}
-            >
+            <Link to="/login"
+                  className="inline-flex items-center gap-1.5 text-sm mb-6 hover:underline"
+                  style={{ color: 'var(--color-muted)' }}>
               <FiArrowLeft size={14} /> Back to Login
             </Link>
           )}
 
-          {/* ── Progress dots (steps 0–2) ── */}
+          {/* Progress steps */}
           {step < 3 && (
             <div className="flex items-center gap-2 mb-6">
               {stepLabels.map((label, i) => (
@@ -322,11 +307,7 @@ export default function ForgotPassword() {
                     <div
                       className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300"
                       style={{
-                        backgroundColor: i < step
-                          ? '#22c55e'
-                          : i === step
-                          ? 'var(--color-primary)'
-                          : 'var(--color-soft)',
+                        backgroundColor: i < step ? '#22c55e' : i === step ? 'var(--color-primary)' : 'var(--color-soft)',
                         color: i <= step ? 'white' : 'var(--color-muted)',
                       }}
                     >
@@ -334,37 +315,27 @@ export default function ForgotPassword() {
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
-                      ) : (
-                        i + 1
-                      )}
+                      ) : i + 1}
                     </div>
-                    <span
-                      className="text-xs whitespace-nowrap"
-                      style={{ color: i === step ? 'var(--color-primary)' : 'var(--color-muted)' }}
-                    >
+                    <span className="text-xs whitespace-nowrap"
+                          style={{ color: i === step ? 'var(--color-primary)' : 'var(--color-muted)' }}>
                       {label}
                     </span>
                   </div>
                   {i < stepLabels.length - 1 && (
-                    <div
-                      className="h-px w-8 mb-4 transition-all duration-300"
-                      style={{ backgroundColor: i < step ? '#22c55e' : 'var(--color-soft)' }}
-                    />
+                    <div className="h-px w-8 mb-4 transition-all duration-300"
+                         style={{ backgroundColor: i < step ? '#22c55e' : 'var(--color-soft)' }} />
                   )}
                 </div>
               ))}
             </div>
           )}
 
-          {/* ══════════════════════════
-              STEP 0 — Enter Email
-          ══════════════════════════ */}
+          {/* STEP 0 — Enter Email */}
           {step === 0 && (
             <>
-              <h1
-                className="text-3xl font-semibold mb-1"
-                style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}
-              >
+              <h1 className="text-3xl font-semibold mb-1"
+                  style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
                 Forgot password?
               </h1>
               <p className="text-sm mb-6" style={{ color: 'var(--color-muted)' }}>
@@ -373,18 +344,12 @@ export default function ForgotPassword() {
 
               <form onSubmit={handleSendOTP} className="space-y-5">
                 <div>
-                  <label
-                    className="block text-sm font-medium mb-1.5"
-                    style={{ color: 'var(--color-dark)' }}
-                  >
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-dark)' }}>
                     Email address
                   </label>
                   <div className="relative">
-                    <FiMail
-                      size={16}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2"
-                      style={{ color: 'var(--color-muted)' }}
-                    />
+                    <FiMail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2"
+                            style={{ color: 'var(--color-muted)' }} />
                     <input
                       type="email"
                       value={email}
@@ -409,34 +374,23 @@ export default function ForgotPassword() {
             </>
           )}
 
-          {/* ══════════════════════════
-              STEP 1 — Verify OTP
-          ══════════════════════════ */}
+          {/* STEP 1 — Verify OTP */}
           {step === 1 && (
             <>
-              <h1
-                className="text-3xl font-semibold mb-1"
-                style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}
-              >
+              <h1 className="text-3xl font-semibold mb-1"
+                  style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
                 Check your email
               </h1>
               <p className="text-sm mb-6" style={{ color: 'var(--color-muted)' }}>
                 We sent a 6-digit code to{' '}
-                <span className="font-medium" style={{ color: 'var(--color-dark)' }}>
-                  {email}
-                </span>
+                <span className="font-medium" style={{ color: 'var(--color-dark)' }}>{email}</span>
               </p>
 
               <div className="space-y-5">
-                {/* OTP info banner */}
-                <div
-                  className="flex items-center gap-3 p-3 rounded-xl"
-                  style={{ backgroundColor: 'var(--color-soft)' }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: 'var(--color-primary)' }}
-                  >
+                <div className="flex items-center gap-3 p-3 rounded-xl"
+                     style={{ backgroundColor: 'var(--color-soft)' }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                       style={{ backgroundColor: 'var(--color-primary)' }}>
                     <FiShield size={14} color="white" />
                   </div>
                   <div>
@@ -449,18 +403,13 @@ export default function ForgotPassword() {
                   </div>
                 </div>
 
-                {/* OTP Input */}
                 <div>
-                  <label
-                    className="block text-sm font-medium mb-3"
-                    style={{ color: 'var(--color-dark)' }}
-                  >
+                  <label className="block text-sm font-medium mb-3" style={{ color: 'var(--color-dark)' }}>
                     Enter 6-digit OTP
                   </label>
                   <OTPInput value={otp} onChange={setOtp} />
                 </div>
 
-                {/* Verify button */}
                 <button
                   onClick={handleVerifyOTP}
                   disabled={loading || otp.length !== 6}
@@ -471,7 +420,6 @@ export default function ForgotPassword() {
                   {loading ? <><Spinner /> Verifying...</> : <><FiShield size={14} /> Verify OTP</>}
                 </button>
 
-                {/* Resend */}
                 <div className="text-center">
                   {resendTimer > 0 ? (
                     <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
@@ -482,7 +430,7 @@ export default function ForgotPassword() {
                     </p>
                   ) : (
                     <button
-                      onClick={handleSendOTP}
+                      onClick={handleResendOTP}                    // ✅ FIX 5
                       disabled={loading}
                       className="text-xs flex items-center gap-1.5 mx-auto hover:underline disabled:opacity-50"
                       style={{ color: 'var(--color-primary)' }}
@@ -492,7 +440,6 @@ export default function ForgotPassword() {
                   )}
                 </div>
 
-                {/* Wrong email? */}
                 <p className="text-center text-xs" style={{ color: 'var(--color-muted)' }}>
                   Wrong email?{' '}
                   <button
@@ -507,15 +454,11 @@ export default function ForgotPassword() {
             </>
           )}
 
-          {/* ══════════════════════════
-              STEP 2 — Reset Password
-          ══════════════════════════ */}
+          {/* STEP 2 — Reset Password */}
           {step === 2 && (
             <>
-              <h1
-                className="text-3xl font-semibold mb-1"
-                style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}
-              >
+              <h1 className="text-3xl font-semibold mb-1"
+                  style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
                 Set new password
               </h1>
               <p className="text-sm mb-6" style={{ color: 'var(--color-muted)' }}>
@@ -523,86 +466,53 @@ export default function ForgotPassword() {
               </p>
 
               <form onSubmit={handleResetPassword} className="space-y-5">
-                {/* New Password */}
                 <div>
-                  <label
-                    className="block text-sm font-medium mb-1.5"
-                    style={{ color: 'var(--color-dark)' }}
-                  >
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-dark)' }}>
                     New Password
                   </label>
                   <div className="relative">
-                    <FiLock
-                      size={16}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2"
-                      style={{ color: 'var(--color-muted)' }}
-                    />
+                    <FiLock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2"
+                            style={{ color: 'var(--color-muted)' }} />
                     <input
                       type={showNew ? 'text' : 'password'}
                       value={passwords.newPassword}
-                      onChange={(e) =>
-                        setPasswords((p) => ({ ...p, newPassword: e.target.value }))
-                      }
+                      onChange={(e) => setPasswords((p) => ({ ...p, newPassword: e.target.value }))}
                       placeholder="Create a strong password"
                       className="input pl-10 pr-10"
                       autoFocus
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowNew(!showNew)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2"
-                      style={{ color: 'var(--color-muted)' }}
-                    >
+                    <button type="button" onClick={() => setShowNew(!showNew)}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                            style={{ color: 'var(--color-muted)' }}>
                       {showNew ? <FiEyeOff size={16} /> : <FiEye size={16} />}
                     </button>
                   </div>
                   <PasswordStrength password={passwords.newPassword} />
                 </div>
 
-                {/* Confirm Password */}
                 <div>
-                  <label
-                    className="block text-sm font-medium mb-1.5"
-                    style={{ color: 'var(--color-dark)' }}
-                  >
+                  <label className="block text-sm font-medium mb-1.5" style={{ color: 'var(--color-dark)' }}>
                     Confirm Password
                   </label>
                   <div className="relative">
-                    <FiLock
-                      size={16}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2"
-                      style={{ color: 'var(--color-muted)' }}
-                    />
+                    <FiLock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2"
+                            style={{ color: 'var(--color-muted)' }} />
                     <input
                       type={showConfirm ? 'text' : 'password'}
                       value={passwords.confirmPassword}
-                      onChange={(e) =>
-                        setPasswords((p) => ({ ...p, confirmPassword: e.target.value }))
-                      }
+                      onChange={(e) => setPasswords((p) => ({ ...p, confirmPassword: e.target.value }))}
                       placeholder="Repeat your password"
                       className="input pl-10 pr-10"
                     />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirm(!showConfirm)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2"
-                      style={{ color: 'var(--color-muted)' }}
-                    >
+                    <button type="button" onClick={() => setShowConfirm(!showConfirm)}
+                            className="absolute right-3.5 top-1/2 -translate-y-1/2"
+                            style={{ color: 'var(--color-muted)' }}>
                       {showConfirm ? <FiEyeOff size={16} /> : <FiEye size={16} />}
                     </button>
                   </div>
-
-                  {/* Match indicator */}
                   {passwords.confirmPassword && (
-                    <p
-                      className="text-xs mt-1.5 flex items-center gap-1"
-                      style={{
-                        color:
-                          passwords.newPassword === passwords.confirmPassword
-                            ? '#22c55e'
-                            : '#ef4444',
-                      }}
-                    >
+                    <p className="text-xs mt-1.5 flex items-center gap-1"
+                       style={{ color: passwords.newPassword === passwords.confirmPassword ? '#22c55e' : '#ef4444' }}>
                       {passwords.newPassword === passwords.confirmPassword
                         ? '✓ Passwords match'
                         : '✗ Passwords do not match'}
@@ -612,11 +522,7 @@ export default function ForgotPassword() {
 
                 <button
                   type="submit"
-                  disabled={
-                    loading ||
-                    !passwords.newPassword ||
-                    passwords.newPassword !== passwords.confirmPassword
-                  }
+                  disabled={loading || !passwords.newPassword || passwords.newPassword !== passwords.confirmPassword}
                   className="w-full py-3 rounded-full text-white font-medium text-sm
                              transition-all disabled:opacity-60 flex items-center justify-center gap-2"
                   style={{ backgroundColor: 'var(--color-primary)' }}
@@ -627,29 +533,20 @@ export default function ForgotPassword() {
             </>
           )}
 
-          {/* ══════════════════════════
-              STEP 3 — Success
-          ══════════════════════════ */}
+          {/* STEP 3 — Success */}
           {step === 3 && (
             <div className="text-center py-8">
-              {/* Success icon */}
-              <div
-                className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
-                style={{ backgroundColor: '#dcfce7' }}
-              >
+              <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
+                   style={{ backgroundColor: '#dcfce7' }}>
                 <FiCheckCircle size={40} color="#22c55e" strokeWidth={1.5} />
               </div>
-
-              <h1
-                className="text-3xl font-semibold mb-2"
-                style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}
-              >
+              <h1 className="text-3xl font-semibold mb-2"
+                  style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
                 Password reset!
               </h1>
               <p className="text-sm mb-8" style={{ color: 'var(--color-muted)' }}>
                 Your password has been reset successfully. You can now log in with your new password.
               </p>
-
               <button
                 onClick={() => navigate('/login')}
                 className="w-full py-3 rounded-full text-white font-medium text-sm
@@ -661,7 +558,6 @@ export default function ForgotPassword() {
             </div>
           )}
 
-          {/* Bottom register link */}
           {step < 3 && (
             <>
               <div className="flex items-center gap-4 my-6">
@@ -671,11 +567,8 @@ export default function ForgotPassword() {
               </div>
               <p className="text-center text-sm" style={{ color: 'var(--color-muted)' }}>
                 Remembered your password?{' '}
-                <Link
-                  to="/login"
-                  className="font-medium hover:underline"
-                  style={{ color: 'var(--color-primary)' }}
-                >
+                <Link to="/login" className="font-medium hover:underline"
+                      style={{ color: 'var(--color-primary)' }}>
                   Sign in
                 </Link>
               </p>

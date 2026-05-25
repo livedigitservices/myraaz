@@ -99,7 +99,7 @@ export default function Footer() {
 
         </div>
 
-        <div className="border-t border-soft mt-10 pt-6 flex flex-col md:flex-row justify-between items-center gap-2">
+        <div className="border-t border-soft mt-10 pt-6 mb-4 flex flex-col md:flex-row justify-between items-center gap-2 ">
           <p className="text-xs text-muted">
             © {new Date().getFullYear()} myRaaz. All rights reserved.
           </p>

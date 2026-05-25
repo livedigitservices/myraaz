@@ -3,30 +3,42 @@ import { Link } from 'react-router-dom';
 import {
   FiPlus, FiEdit2, FiTrash2, FiSearch,
   FiBox, FiAlertCircle, FiTrendingUp, FiUsers,
-  FiShoppingCart, FiEye,
-  FiHome
+  FiShoppingCart, FiEye, FiHome, FiMenu, FiX, FiTag,
+  FiPackage
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
-import { FiTag } from 'react-icons/fi';
 
 const SideLink = ({ to, icon, label, active }) => (
-  <Link to={to}
+  <Link
+    to={to}
     className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
     style={{
       backgroundColor: active ? 'var(--color-primary)' : 'transparent',
       color: active ? 'white' : 'var(--color-muted)',
-    }}>
+    }}
+  >
     {icon} {label}
   </Link>
 );
 
+const NAV_LINKS = [
+  { to: '/admin',            icon: <FiTrendingUp size={16} />,   label: 'Dashboard'  },
+  { to: '/admin/products',   icon: <FiBox size={16} />,          label: 'Products'   },
+  { to: '/admin/orders',     icon: <FiShoppingCart size={16} />, label: 'Orders'     },
+  { to: '/admin/users',      icon: <FiUsers size={16} />,        label: 'Users'      },
+  { to: '/admin/coupons',    icon: <FiTag size={16} />,          label: 'Coupons'    },
+  { to:"/admin/returns"  ,   icon:<FiPackage size={16} />,      label:"Returns"  },
+  { to: '/admin/home-media', icon: <FiHome size={16} />,         label: 'Home Media' },
+];
+
 export default function AdminProducts() {
-  const [products, setProducts]   = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [search, setSearch]       = useState('');
-  const [deleting, setDeleting]   = useState(null);
-  const [filterCat, setFilterCat] = useState('');
+  const [products, setProducts]     = useState([]);
+  const [loading, setLoading]       = useState(true);
+  const [search, setSearch]         = useState('');
+  const [deleting, setDeleting]     = useState(null);
+  const [filterCat, setFilterCat]   = useState('');
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const categories = ['', 'hair-oil', 'shampoo', 'conditioner', 'hair-mask', 'serum'];
 
@@ -67,26 +79,52 @@ export default function AdminProducts() {
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-cream)' }}>
 
-      {/* Sidebar */}
-      <aside className="hidden lg:flex flex-col w-56 bg-white sticky top-16
-                        h-[calc(100vh-64px)] border-r py-6 px-3 gap-1"
-             style={{ borderColor: 'var(--color-soft)' }}>
+      {/* ── Mobile drawer backdrop ── */}
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar (desktop) + Drawer (mobile) ── */}
+      <aside
+        className={`
+          fixed lg:sticky top-0 lg:top-16 z-40 lg:z-auto
+          flex flex-col w-64 lg:w-56 bg-white
+          h-screen lg:h-[calc(100vh-64px)]
+          border-r py-6 px-3 gap-1
+          transition-transform duration-300
+          ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0 lg:flex
+        `}
+        style={{ borderColor: 'var(--color-soft)' }}
+      >
+        {/* Close btn – mobile only */}
+        <button
+          className="lg:hidden self-end mb-2 p-1 rounded-lg"
+          style={{ color: 'var(--color-muted)' }}
+          onClick={() => setDrawerOpen(false)}
+        >
+          <FiX size={20} />
+        </button>
+
         <div className="px-4 mb-6">
           <p className="text-xs font-semibold uppercase tracking-widest"
              style={{ color: 'var(--color-muted)' }}>Admin Panel</p>
           <p className="text-base font-semibold mt-0.5"
              style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>myRaaz</p>
         </div>
+
         <p className="px-4 text-xs font-semibold uppercase tracking-widest mb-1"
            style={{ color: 'var(--color-muted)' }}>Overview</p>
-        <SideLink to="/admin"          icon={<FiTrendingUp size={16} />}    label="Dashboard"         />
-        <p className="px-4 text-xs font-semibold uppercase tracking-widest mt-4 mb-1"
-           style={{ color: 'var(--color-muted)' }}>Manage</p>
-        <SideLink to="/admin/products" icon={<FiBox size={16} />}           label="Products"  active  />
-        <SideLink to="/admin/orders"   icon={<FiShoppingCart size={16} />}  label="Orders"            />
-        <SideLink to="/admin/users"    icon={<FiUsers size={16} />}         label="Users"             />
-        <SideLink to="/admin/coupons" icon={<FiTag size={16} />} label="Coupons" />
-        <SideLink to="/admin/home-media" icon={<FiHome size={16} />} label="Home Media" />
+
+        {NAV_LINKS.map(({ to, icon, label }) => (
+          <SideLink
+            key={to} to={to} icon={icon} label={label}
+            active={to === '/admin/products'}
+          />
+        ))}
 
         <div className="mt-auto px-4">
           <Link to="/" className="flex items-center gap-2 text-xs"
@@ -96,10 +134,27 @@ export default function AdminProducts() {
         </div>
       </aside>
 
-      <main className="flex-1 p-6">
+      {/* ── Main content ── */}
+      <main className="flex-1 p-4 lg:p-6 min-w-0">
+
+        {/* ── Mobile top bar ── */}
+        <div className="flex items-center gap-3 mb-5 lg:hidden">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="p-2 rounded-xl"
+            style={{ backgroundColor: 'white', color: 'var(--color-dark)',
+                     boxShadow: 'var(--shadow-card)' }}
+          >
+            <FiMenu size={18} />
+          </button>
+          <p className="text-base font-semibold"
+             style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
+            myRaaz Admin
+          </p>
+        </div>
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
             <h1 className="text-2xl font-semibold"
                 style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
@@ -109,33 +164,39 @@ export default function AdminProducts() {
               {products.length} total · {inStock} in stock · {outOfStock} out of stock
             </p>
           </div>
-          <Link to="/admin/products/add"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-white
-                       text-sm font-medium transition-all hover:opacity-90"
-            style={{ backgroundColor: 'var(--color-primary)' }}>
+          <Link
+            to="/admin/products/add"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full
+                       text-white text-sm font-medium transition-all hover:opacity-90 w-fit"
+            style={{ backgroundColor: 'var(--color-primary)' }}
+          >
             <FiPlus size={15} /> Add Product
           </Link>
         </div>
 
         {/* Search + Filter */}
-        <div className="flex gap-3 mb-6 flex-wrap">
-          <div className="relative flex-1 min-w-60">
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          <div className="relative flex-1">
             <FiSearch size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2"
                       style={{ color: 'var(--color-muted)' }} />
-            <input type="text" placeholder="Search products..."
+            <input
+              type="text" placeholder="Search products..."
               value={search} onChange={e => setSearch(e.target.value)}
-              className="input pl-10 text-sm" />
+              className="input pl-10 text-sm w-full"
+            />
           </div>
-          <select value={filterCat} onChange={e => setFilterCat(e.target.value)}
-            className="input text-sm w-44"
-            style={{ color: 'var(--color-dark)' }}>
+          <select
+            value={filterCat} onChange={e => setFilterCat(e.target.value)}
+            className="input text-sm sm:w-44"
+            style={{ color: 'var(--color-dark)' }}
+          >
             {categories.map(c => (
               <option key={c} value={c}>{c ? c : 'All Categories'}</option>
             ))}
           </select>
         </div>
 
-        {/* Table */}
+        {/* Table / Cards */}
         <div className="bg-white rounded-2xl overflow-hidden"
              style={{ boxShadow: 'var(--shadow-card)' }}>
           {loading ? (
@@ -152,7 +213,7 @@ export default function AdminProducts() {
               ))}
             </div>
           ) : products.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="flex flex-col items-center justify-center py-20 text-center px-4">
               <FiAlertCircle size={36} style={{ color: 'var(--color-muted)' }} className="mb-3" />
               <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-dark)' }}>
                 No products found
@@ -163,105 +224,161 @@ export default function AdminProducts() {
               <Link to="/admin/products/add" className="btn-primary">Add Product</Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-soft)' }}>
-                    {['Product', 'Category', 'Price', 'Stock', 'Rating', 'Actions'].map(h => (
-                      <th key={h} className="text-left px-5 py-3.5 text-xs font-semibold
-                                             uppercase tracking-widest"
-                          style={{ color: 'var(--color-muted)' }}>{h}</th>
+            <>
+              {/* ── Desktop table (md+) ── */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-soft)' }}>
+                      {['Product', 'Category', 'Price', 'Stock', 'Rating', 'Actions'].map(h => (
+                        <th key={h}
+                            className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-widest"
+                            style={{ color: 'var(--color-muted)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map(product => (
+                      <tr key={product._id}
+                          className="transition-colors hover:bg-soft/30"
+                          style={{ borderBottom: '1px solid var(--color-soft)' }}>
+
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0"
+                                 style={{ backgroundColor: 'var(--color-soft)' }}>
+                              <img src={product.image} alt={product.name}
+                                   className="w-full h-full object-cover" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-sm line-clamp-1"
+                                 style={{ color: 'var(--color-dark)' }}>{product.name}</p>
+                              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                                {product.brand}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-3.5">
+                          <span className="px-2.5 py-1 rounded-full text-xs capitalize"
+                                style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-primary)' }}>
+                            {product.category}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-3.5">
+                          <span className="font-semibold text-sm"
+                                style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-serif)' }}>
+                            ₹{product.price}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-1.5">
+                            <div className={`w-1.5 h-1.5 rounded-full ${product.stock > 0 ? 'bg-green-500' : 'bg-red-400'}`} />
+                            <span className="text-sm" style={{ color: 'var(--color-dark)' }}>
+                              {product.stock}
+                            </span>
+                          </div>
+                        </td>
+
+                        <td className="px-5 py-3.5">
+                          <span className="text-sm" style={{ color: 'var(--color-dark)' }}>
+                            ⭐ {product.rating?.toFixed(1)} ({product.numReviews})
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-2">
+                            <Link to={`/products/${product._id}`}
+                                  className="p-2 rounded-xl transition-all hover:bg-soft"
+                                  style={{ color: 'var(--color-muted)' }} title="View">
+                              <FiEye size={15} />
+                            </Link>
+                            <Link to={`/admin/products/edit/${product._id}`}
+                                  className="p-2 rounded-xl transition-all hover:bg-blue-50"
+                                  style={{ color: '#3B82F6' }} title="Edit">
+                              <FiEdit2 size={15} />
+                            </Link>
+                            <button
+                              onClick={() => handleDelete(product._id, product.name)}
+                              disabled={deleting === product._id}
+                              className="p-2 rounded-xl transition-all hover:bg-red-50 disabled:opacity-40"
+                              style={{ color: '#EF4444' }} title="Delete">
+                              <FiTrash2 size={15} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map(product => (
-                    <tr key={product._id}
-                        className="transition-colors hover:bg-soft/30"
-                        style={{ borderBottom: '1px solid var(--color-soft)' }}>
+                  </tbody>
+                </table>
+              </div>
 
-                      {/* Product */}
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0"
-                               style={{ backgroundColor: 'var(--color-soft)' }}>
-                            <img src={product.image} alt={product.name}
-                                 className="w-full h-full object-cover" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-sm line-clamp-1"
-                               style={{ color: 'var(--color-dark)' }}>{product.name}</p>
-                            <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                              {product.brand}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
+              {/* ── Mobile card list (< md) ── */}
+              <div className="md:hidden divide-y" style={{ borderColor: 'var(--color-soft)' }}>
+                {products.map(product => (
+                  <div key={product._id} className="p-4 flex items-start gap-3">
+                    {/* Image */}
+                    <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"
+                         style={{ backgroundColor: 'var(--color-soft)' }}>
+                      <img src={product.image} alt={product.name}
+                           className="w-full h-full object-cover" />
+                    </div>
 
-                      {/* Category */}
-                      <td className="px-5 py-3.5">
-                        <span className="px-2.5 py-1 rounded-full text-xs capitalize"
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-sm line-clamp-1"
+                         style={{ color: 'var(--color-dark)' }}>{product.name}</p>
+                      <p className="text-xs mb-1.5" style={{ color: 'var(--color-muted)' }}>
+                        {product.brand}
+                      </p>
+
+                      <div className="flex flex-wrap gap-2 items-center">
+                        <span className="px-2 py-0.5 rounded-full text-xs capitalize"
                               style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-primary)' }}>
                           {product.category}
                         </span>
-                      </td>
-
-                      {/* Price */}
-                      <td className="px-5 py-3.5">
                         <span className="font-semibold text-sm"
                               style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-serif)' }}>
                           ₹{product.price}
                         </span>
-                      </td>
-
-                      {/* Stock */}
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1.5">
-                          <div className={`w-1.5 h-1.5 rounded-full ${product.stock > 0 ? 'bg-green-500' : 'bg-red-400'}`} />
-                          <span className="text-sm" style={{ color: 'var(--color-dark)' }}>
-                            {product.stock}
-                          </span>
-                        </div>
-                      </td>
-
-                      {/* Rating */}
-                      <td className="px-5 py-3.5">
-                        <span className="text-sm" style={{ color: 'var(--color-dark)' }}>
-                          ⭐ {product.rating?.toFixed(1)} ({product.numReviews})
+                        <span className="flex items-center gap-1 text-xs"
+                              style={{ color: 'var(--color-dark)' }}>
+                          <span className={`w-1.5 h-1.5 rounded-full inline-block ${product.stock > 0 ? 'bg-green-500' : 'bg-red-400'}`} />
+                          {product.stock} in stock
                         </span>
-                      </td>
+                        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                          ⭐ {product.rating?.toFixed(1)}
+                        </span>
+                      </div>
+                    </div>
 
-                      {/* Actions */}
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-2">
-                          <Link to={`/products/${product._id}`}
+                    {/* Actions */}
+                    <div className="flex flex-col gap-1 shrink-0">
+                      <Link to={`/products/${product._id}`}
                             className="p-2 rounded-xl transition-all hover:bg-soft"
-                            style={{ color: 'var(--color-muted)' }}
-                            title="View">
-                            <FiEye size={15} />
-                          </Link>
-                          <Link to={`/admin/products/edit/${product._id}`}
+                            style={{ color: 'var(--color-muted)' }}>
+                        <FiEye size={15} />
+                      </Link>
+                      <Link to={`/admin/products/edit/${product._id}`}
                             className="p-2 rounded-xl transition-all hover:bg-blue-50"
-                            style={{ color: '#3B82F6' }}
-                            title="Edit">
-                            <FiEdit2 size={15} />
-                          </Link>
-                          <button
-                            onClick={() => handleDelete(product._id, product.name)}
-                            disabled={deleting === product._id}
-                            className="p-2 rounded-xl transition-all hover:bg-red-50
-                                       disabled:opacity-40"
-                            style={{ color: '#EF4444' }}
-                            title="Delete">
-                            <FiTrash2 size={15} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                            style={{ color: '#3B82F6' }}>
+                        <FiEdit2 size={15} />
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(product._id, product.name)}
+                        disabled={deleting === product._id}
+                        className="p-2 rounded-xl transition-all hover:bg-red-50 disabled:opacity-40"
+                        style={{ color: '#EF4444' }}>
+                        <FiTrash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </main>

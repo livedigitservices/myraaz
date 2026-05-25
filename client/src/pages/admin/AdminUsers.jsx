@@ -4,34 +4,45 @@ import {
   FiUsers, FiSearch, FiTrash2, FiShield,
   FiShieldOff, FiTrendingUp, FiBox,
   FiShoppingCart, FiEye, FiUser,
-  FiPackage,
-  FiHome
+  FiPackage, FiHome, FiTag, FiMenu, FiX
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
-import { FiTag } from 'react-icons/fi';
 
 const SideLink = ({ to, icon, label, active }) => (
-  <Link to={to}
+  <Link
+    to={to}
     className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
     style={{
       backgroundColor: active ? 'var(--color-primary)' : 'transparent',
       color: active ? 'white' : 'var(--color-muted)',
-    }}>
+    }}
+  >
     {icon} {label}
   </Link>
 );
 
+const NAV_LINKS = [
+  { to: '/admin',            icon: <FiTrendingUp size={16} />,   label: 'Dashboard'  },
+  { to: '/admin/products',   icon: <FiBox size={16} />,          label: 'Products'   },
+  { to: '/admin/orders',     icon: <FiShoppingCart size={16} />, label: 'Orders'     },
+  { to: '/admin/users',      icon: <FiUsers size={16} />,        label: 'Users'      },
+  { to: '/admin/coupons',    icon: <FiTag size={16} />,          label: 'Coupons'    },
+  { to: '/admin/returns',    icon: <FiPackage size={16} />,      label: 'Returns'    },
+  { to: '/admin/home-media', icon: <FiHome size={16} />,         label: 'Home Media' },
+];
+
 export default function AdminUsers() {
-  const { userInfo }          = useAuth();
-  const [users, setUsers]     = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch]   = useState('');
-  const [acting, setActing]   = useState(null);
+  const { userInfo }            = useAuth();
+  const [users, setUsers]       = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState('');
+  const [acting, setActing]     = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchUsers = async () => {
       try {
         const { data } = await api.get('/users/admin');
         setUsers(data);
@@ -41,7 +52,7 @@ export default function AdminUsers() {
         setLoading(false);
       }
     };
-    fetch();
+    fetchUsers();
   }, []);
 
   const handleDelete = async (id, name) => {
@@ -59,15 +70,11 @@ export default function AdminUsers() {
   };
 
   const handleToggleAdmin = async (id, name, isAdmin) => {
-    if (!window.confirm(
-      `${isAdmin ? 'Remove admin from' : 'Make admin'} "${name}"?`
-    )) return;
+    if (!window.confirm(`${isAdmin ? 'Remove admin from' : 'Make admin'} "${name}"?`)) return;
     try {
       setActing(id);
       await api.put(`/users/admin/${id}/toggle-admin`);
-      setUsers(prev => prev.map(u =>
-        u._id === id ? { ...u, isAdmin: !u.isAdmin } : u
-      ));
+      setUsers(prev => prev.map(u => u._id === id ? { ...u, isAdmin: !u.isAdmin } : u));
       toast.success(`${name} is now ${isAdmin ? 'a regular user' : 'an admin'}`);
     } catch {
       toast.error('Failed to update user');
@@ -85,22 +92,50 @@ export default function AdminUsers() {
 
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-cream)' }}>
-      <aside className="hidden lg:flex flex-col w-56 bg-white sticky top-16
-                        h-[calc(100vh-64px)] border-r py-6 px-3 gap-1"
-             style={{ borderColor: 'var(--color-soft)' }}>
+
+      {/* ── Mobile drawer backdrop ── */}
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
+          onClick={() => setDrawerOpen(false)}
+        />
+      )}
+
+      {/* ── Sidebar / Drawer ── */}
+      <aside
+        className={`
+          fixed lg:sticky top-0 lg:top-16 z-40 lg:z-auto
+          flex flex-col w-64 lg:w-56 bg-white
+          h-screen lg:h-[calc(100vh-64px)]
+          border-r py-6 px-3 gap-1
+          transition-transform duration-300
+          ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}
+          lg:translate-x-0 lg:flex
+        `}
+        style={{ borderColor: 'var(--color-soft)' }}
+      >
+        <button
+          className="lg:hidden self-end mb-2 p-1 rounded-lg"
+          style={{ color: 'var(--color-muted)' }}
+          onClick={() => setDrawerOpen(false)}
+        >
+          <FiX size={20} />
+        </button>
+
         <div className="px-4 mb-6">
           <p className="text-xs font-semibold uppercase tracking-widest"
              style={{ color: 'var(--color-muted)' }}>Admin Panel</p>
           <p className="text-base font-semibold mt-0.5"
              style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>myRaaz</p>
         </div>
-        <SideLink to="/admin"          icon={<FiTrendingUp size={16} />}   label="Dashboard"     />
-        <SideLink to="/admin/products" icon={<FiBox size={16} />}          label="Products"      />
-        <SideLink to="/admin/orders"   icon={<FiShoppingCart size={16} />} label="Orders"        />
-        <SideLink to="/admin/users"    icon={<FiUsers size={16} />}        label="Users" active  />
-        <SideLink to="/admin/coupons" icon={<FiTag size={16} />} label="Coupons" />
-        <SideLink to="/admin/returns" icon={<FiPackage size={16} />} label="Returns" />
-        <SideLink to="/admin/home-media" icon={<FiHome size={16} />} label="Home Media" />
+          <p className="px-4 text-xs font-semibold uppercase tracking-widest mb-1"
+           style={{ color: 'var(--color-muted)' }}>Overview</p>
+        {NAV_LINKS.map(({ to, icon, label }) => (
+          <SideLink
+            key={to} to={to} icon={icon} label={label}
+            active={to === '/admin/users'}
+          />
+        ))}
 
         <div className="mt-auto px-4">
           <Link to="/" className="flex items-center gap-2 text-xs"
@@ -110,7 +145,26 @@ export default function AdminUsers() {
         </div>
       </aside>
 
-      <main className="flex-1 p-6">
+      {/* ── Main content ── */}
+      <main className="flex-1 p-4 lg:p-6 min-w-0">
+
+        {/* ── Mobile top bar ── */}
+        <div className="flex items-center gap-3 mb-5 lg:hidden">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="p-2 rounded-xl"
+            style={{ backgroundColor: 'white', color: 'var(--color-dark)',
+                     boxShadow: 'var(--shadow-card)' }}
+          >
+            <FiMenu size={18} />
+          </button>
+          <p className="text-base font-semibold"
+             style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
+            myRaaz Admin
+          </p>
+        </div>
+
+        {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-semibold"
               style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
@@ -125,12 +179,14 @@ export default function AdminUsers() {
         <div className="relative mb-6 max-w-sm">
           <FiSearch size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2"
                     style={{ color: 'var(--color-muted)' }} />
-          <input type="text" placeholder="Search by name or email..."
+          <input
+            type="text" placeholder="Search by name or email..."
             value={search} onChange={e => setSearch(e.target.value)}
-            className="input pl-10 text-sm" />
+            className="input pl-10 text-sm w-full"
+          />
         </div>
 
-        {/* Table */}
+        {/* Table / Cards */}
         <div className="bg-white rounded-2xl overflow-hidden"
              style={{ boxShadow: 'var(--shadow-card)' }}>
           {loading ? (
@@ -154,101 +210,175 @@ export default function AdminUsers() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr style={{ borderBottom: '1px solid var(--color-soft)' }}>
-                    {['User', 'Email', 'Role', 'Joined', 'Actions'].map(h => (
-                      <th key={h} className="text-left px-5 py-3.5 text-xs font-semibold
-                                             uppercase tracking-widest"
-                          style={{ color: 'var(--color-muted)' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map(user => (
-                    <tr key={user._id}
-                        className="transition-colors hover:bg-soft/30"
-                        style={{ borderBottom: '1px solid var(--color-soft)' }}>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full flex items-center justify-center
-                                          text-sm font-bold text-white shrink-0"
-                               style={{ backgroundColor: user.isAdmin
-                                 ? 'var(--color-accent)' : 'var(--color-primary)' }}>
-                            {user.name?.charAt(0).toUpperCase()}
+            <>
+              {/* ── Desktop table (md+) ── */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--color-soft)' }}>
+                      {['User', 'Email', 'Role', 'Joined', 'Actions'].map(h => (
+                        <th key={h}
+                            className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-widest"
+                            style={{ color: 'var(--color-muted)' }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.map(user => (
+                      <tr key={user._id}
+                          className="transition-colors hover:bg-soft/30"
+                          style={{ borderBottom: '1px solid var(--color-soft)' }}>
+
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full flex items-center justify-center
+                                            text-sm font-bold text-white shrink-0"
+                                 style={{ backgroundColor: user.isAdmin
+                                   ? 'var(--color-accent)' : 'var(--color-primary)' }}>
+                              {user.name?.charAt(0).toUpperCase()}
+                            </div>
+                            <p className="font-medium text-sm" style={{ color: 'var(--color-dark)' }}>
+                              {user.name}
+                              {user._id === userInfo?._id && (
+                                <span className="ml-2 text-xs px-1.5 py-0.5 rounded"
+                                      style={{ backgroundColor: 'var(--color-soft)',
+                                               color: 'var(--color-muted)' }}>you</span>
+                              )}
+                            </p>
                           </div>
-                          <p className="font-medium text-sm" style={{ color: 'var(--color-dark)' }}>
-                            {user.name}
-                            {user._id === userInfo?._id && (
-                              <span className="ml-2 text-xs px-1.5 py-0.5 rounded"
-                                    style={{ backgroundColor: 'var(--color-soft)',
-                                             color: 'var(--color-muted)' }}>you</span>
-                            )}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
-                          {user.email}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        {user.isAdmin ? (
-                          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full
-                                           text-xs font-medium w-fit"
-                                style={{ backgroundColor: '#FEF3E2', color: 'var(--color-accent)' }}>
-                            <FiShield size={11} /> Admin
+                        </td>
+
+                        <td className="px-5 py-3.5">
+                          <span className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                            {user.email}
                           </span>
-                        ) : (
-                          <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full
-                                           text-xs font-medium w-fit"
-                                style={{ backgroundColor: 'var(--color-soft)',
-                                         color: 'var(--color-muted)' }}>
-                            <FiUser size={11} /> Customer
+                        </td>
+
+                        <td className="px-5 py-3.5">
+                          {user.isAdmin ? (
+                            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full
+                                             text-xs font-medium w-fit"
+                                  style={{ backgroundColor: '#FEF3E2', color: 'var(--color-accent)' }}>
+                              <FiShield size={11} /> Admin
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5 px-2.5 py-1 rounded-full
+                                             text-xs font-medium w-fit"
+                                  style={{ backgroundColor: 'var(--color-soft)',
+                                           color: 'var(--color-muted)' }}>
+                              <FiUser size={11} /> Customer
+                            </span>
+                          )}
+                        </td>
+
+                        <td className="px-5 py-3.5">
+                          <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                            {new Date(user.createdAt).toLocaleDateString('en-IN', {
+                              day: 'numeric', month: 'short', year: 'numeric'
+                            })}
+                          </span>
+                        </td>
+
+                        <td className="px-5 py-3.5">
+                          <div className="flex items-center gap-1">
+                            {user._id !== userInfo?._id && (
+                              <>
+                                <button
+                                  onClick={() => handleToggleAdmin(user._id, user.name, user.isAdmin)}
+                                  disabled={acting === user._id}
+                                  title={user.isAdmin ? 'Remove admin' : 'Make admin'}
+                                  className="p-2 rounded-xl transition-all hover:bg-amber-50 disabled:opacity-40"
+                                  style={{ color: '#F59E0B' }}>
+                                  {user.isAdmin ? <FiShieldOff size={15} /> : <FiShield size={15} />}
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(user._id, user.name)}
+                                  disabled={acting === user._id}
+                                  className="p-2 rounded-xl transition-all hover:bg-red-50 disabled:opacity-40"
+                                  style={{ color: '#EF4444' }}
+                                  title="Delete user">
+                                  <FiTrash2 size={15} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* ── Mobile card list (< md) ── */}
+              <div className="md:hidden divide-y" style={{ borderColor: 'var(--color-soft)' }}>
+                {filtered.map(user => (
+                  <div key={user._id} className="p-4 flex items-center gap-3">
+                    {/* Avatar */}
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center
+                                    text-sm font-bold text-white shrink-0"
+                         style={{ backgroundColor: user.isAdmin
+                           ? 'var(--color-accent)' : 'var(--color-primary)' }}>
+                      {user.name?.charAt(0).toUpperCase()}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-sm" style={{ color: 'var(--color-dark)' }}>
+                          {user.name}
+                        </p>
+                        {user._id === userInfo?._id && (
+                          <span className="text-xs px-1.5 py-0.5 rounded"
+                                style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-muted)' }}>
+                            you
                           </span>
                         )}
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <span className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                          {new Date(user.createdAt).toLocaleDateString('en-IN', {
-                            day: 'numeric', month: 'short', year: 'numeric'
-                          })}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5">
-                        <div className="flex items-center gap-1">
-                          {user._id !== userInfo?._id && (
-                            <>
-                              <button
-                                onClick={() => handleToggleAdmin(user._id, user.name, user.isAdmin)}
-                                disabled={acting === user._id}
-                                title={user.isAdmin ? 'Remove admin' : 'Make admin'}
-                                className="p-2 rounded-xl transition-all hover:bg-amber-50
-                                           disabled:opacity-40"
-                                style={{ color: '#F59E0B' }}>
-                                {user.isAdmin
-                                  ? <FiShieldOff size={15} />
-                                  : <FiShield size={15} />}
-                              </button>
-                              <button
-                                onClick={() => handleDelete(user._id, user.name)}
-                                disabled={acting === user._id}
-                                className="p-2 rounded-xl transition-all hover:bg-red-50
-                                           disabled:opacity-40"
-                                style={{ color: '#EF4444' }}
-                                title="Delete user">
-                                <FiTrash2 size={15} />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                        {user.isAdmin ? (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                                style={{ backgroundColor: '#FEF3E2', color: 'var(--color-accent)' }}>
+                            <FiShield size={10} /> Admin
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-xs"
+                                style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-muted)' }}>
+                            <FiUser size={10} /> Customer
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs truncate mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                        {user.email}
+                      </p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                        Joined {new Date(user.createdAt).toLocaleDateString('en-IN', {
+                          day: 'numeric', month: 'short', year: 'numeric'
+                        })}
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    {user._id !== userInfo?._id && (
+                      <div className="flex flex-col gap-1 shrink-0">
+                        <button
+                          onClick={() => handleToggleAdmin(user._id, user.name, user.isAdmin)}
+                          disabled={acting === user._id}
+                          title={user.isAdmin ? 'Remove admin' : 'Make admin'}
+                          className="p-2 rounded-xl transition-all hover:bg-amber-50 disabled:opacity-40"
+                          style={{ color: '#F59E0B' }}>
+                          {user.isAdmin ? <FiShieldOff size={15} /> : <FiShield size={15} />}
+                        </button>
+                        <button
+                          onClick={() => handleDelete(user._id, user.name)}
+                          disabled={acting === user._id}
+                          className="p-2 rounded-xl transition-all hover:bg-red-50 disabled:opacity-40"
+                          style={{ color: '#EF4444' }}>
+                          <FiTrash2 size={15} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </div>
       </main>

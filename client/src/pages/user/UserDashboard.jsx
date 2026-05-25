@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   FiPackage, FiHeart, FiShoppingCart, FiUser,
   FiChevronRight, FiClock, FiCheckCircle,
-  FiTruck, FiXCircle, FiBox, FiEdit2
+  FiTruck, FiXCircle, FiBox, FiEdit2, FiCreditCard
 } from 'react-icons/fi';
 import api from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth }     from '../../context/AuthContext';
 import { useWishlist } from '../../context/WishlistContext';
-import { useCart } from '../../context/CartContext';
-import { FiCreditCard } from 'react-icons/fi';
+import { useCart }     from '../../context/CartContext';
 
 /* ── Status badge ── */
 const StatusBadge = ({ status }) => {
@@ -29,7 +28,7 @@ const StatusBadge = ({ status }) => {
   );
 };
 
-/* ── Sidebar ── */
+/* ── Sidebar link ── */
 const SideLink = ({ to, icon, label, active }) => (
   <Link to={to}
     className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
@@ -42,14 +41,15 @@ const SideLink = ({ to, icon, label, active }) => (
 );
 
 export default function UserDashboard() {
-  const { userInfo }        = useAuth();
-  const { wishlist }        = useWishlist();
+  const { userInfo }              = useAuth();
+  const { wishlist }              = useWishlist();
   const { cartItems, totalItems } = useCart();
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { pathname }              = useLocation();
+  const [orders, setOrders]       = useState([]);
+  const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchOrders = async () => {
       try {
         const { data } = await api.get('/orders/mine');
         setOrders(data);
@@ -59,7 +59,7 @@ export default function UserDashboard() {
         setLoading(false);
       }
     };
-    fetch();
+    fetchOrders();
   }, []);
 
   const delivered  = orders.filter(o => o.status === 'delivered').length;
@@ -69,23 +69,22 @@ export default function UserDashboard() {
     .reduce((s, o) => s + o.totalPrice, 0);
 
   const stats = [
-    { icon: <FiPackage size={20} />,     label: 'Total Orders',  value: orders.length,                              color: '#7C6A5E', to: '/dashboard/orders' },
-    { icon: <FiCheckCircle size={20} />, label: 'Delivered',     value: delivered,                                  color: '#059669', to: '/dashboard/orders' },
-    { icon: <FiClock size={20} />,       label: 'In Progress',   value: pending,                                    color: '#D97706', to: '/dashboard/orders' },
-    { icon: <FiHeart size={20} />,       label: 'Wishlist',      value: wishlist.length,                            color: '#D4AF8C', to: '/wishlist'         },
-    { icon: <FiShoppingCart size={20} />,label: 'Cart Items',    value: totalItems,                                 color: '#7C3AED', to: '/cart'             },
-    { icon: <FiTruck size={20} />,       label: 'Total Spent',   value: `₹${totalSpent.toLocaleString('en-IN')}`,  color: '#0EA5E9', to: '/dashboard/orders' },
+    { icon: <FiPackage size={20} />,      label: 'Total Orders', value: orders.length,                            color: '#7C6A5E', to: '/dashboard/orders' },
+    { icon: <FiCheckCircle size={20} />,  label: 'Delivered',    value: delivered,                                 color: '#059669', to: '/dashboard/orders' },
+    { icon: <FiClock size={20} />,        label: 'In Progress',  value: pending,                                   color: '#D97706', to: '/dashboard/orders' },
+    { icon: <FiHeart size={20} />,        label: 'Wishlist',     value: wishlist.length,                           color: '#D4AF8C', to: '/wishlist'         },
+    { icon: <FiShoppingCart size={20} />, label: 'Cart Items',   value: totalItems,                                color: '#7C3AED', to: '/cart'             },
+    { icon: <FiTruck size={20} />,        label: 'Total Spent',  value: `₹${totalSpent.toLocaleString('en-IN')}`, color: '#0EA5E9', to: '/dashboard/orders' },
   ];
 
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: 'var(--color-cream)' }}>
 
-      {/* ── SIDEBAR ── */}
+      {/* ── SIDEBAR (desktop only) ── */}
       <aside className="hidden lg:flex flex-col w-56 bg-white sticky top-16
                         h-[calc(100vh-64px)] border-r py-6 px-3 gap-1"
              style={{ borderColor: 'var(--color-soft)', boxShadow: 'var(--shadow-card)' }}>
 
-        {/* Avatar */}
         <div className="flex flex-col items-center px-4 mb-6 text-center">
           <div className="w-14 h-14 rounded-full flex items-center justify-center text-xl
                           font-bold text-white mb-2"
@@ -101,23 +100,21 @@ export default function UserDashboard() {
 
         <p className="px-4 text-xs font-semibold uppercase tracking-widest mb-1"
            style={{ color: 'var(--color-muted)' }}>My Account</p>
-        <SideLink to="/dashboard"         icon={<FiUser size={16} />}       label="Overview"    active />
-        <SideLink to="/dashboard/orders"  icon={<FiPackage size={16} />}    label="My Orders"          />
-        <SideLink to="/dashboard/profile" icon={<FiEdit2 size={16} />}      label="Edit Profile"       />
-        
+        <SideLink to="/dashboard"         icon={<FiUser size={16} />}       label="Overview"     active={pathname === '/dashboard'} />
+        <SideLink to="/dashboard/orders"  icon={<FiPackage size={16} />}    label="My Orders"    active={pathname === '/dashboard/orders'} />
+        <SideLink to="/dashboard/profile" icon={<FiEdit2 size={16} />}      label="Edit Profile" active={pathname === '/dashboard/profile'} />
+        <SideLink to="/dashboard/wallet"  icon={<FiCreditCard size={16} />} label="Wallet"       active={pathname === '/dashboard/wallet'} />
 
         <p className="px-4 text-xs font-semibold uppercase tracking-widest mt-4 mb-1"
            style={{ color: 'var(--color-muted)' }}>Shopping</p>
-        <SideLink to="/wishlist"          icon={<FiHeart size={16} />}       label="Wishlist"           />
-        <SideLink to="/cart"              icon={<FiShoppingCart size={16} /> }label="Cart"              />
-        <SideLink to="/products"          icon={<FiBox size={16} />}         label="Shop"               />
-        <SideLink to="/dashboard/wallet" icon={<FiCreditCard size={16} />} label="Wallet" />
+        <SideLink to="/wishlist" icon={<FiHeart size={16} />}        label="Wishlist" active={pathname === '/wishlist'} />
+        <SideLink to="/cart"     icon={<FiShoppingCart size={16} />} label="Cart"     active={pathname === '/cart'} />
+        <SideLink to="/products" icon={<FiBox size={16} />}          label="Shop"     active={pathname === '/products'} />
       </aside>
 
-      {/* ── MAIN ── */}
-      <main className="flex-1 p-6 max-w-4xl">
+      {/* ── MAIN — pb-24 on mobile so content clears the fixed bottom nav ── */}
+      <main className="flex-1 p-6 pb-24 lg:pb-6 max-w-4xl">
 
-        {/* Header */}
         <div className="mb-8">
           <p className="text-xs font-medium uppercase tracking-widest mb-1"
              style={{ color: 'var(--color-accent)' }}>Welcome back</p>
@@ -187,9 +184,7 @@ export default function UserDashboard() {
                    style={{ backgroundColor: 'var(--color-soft)' }}>
                 <FiPackage size={28} style={{ color: 'var(--color-muted)' }} />
               </div>
-              <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-dark)' }}>
-                No orders yet
-              </p>
+              <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-dark)' }}>No orders yet</p>
               <p className="text-xs mb-5" style={{ color: 'var(--color-muted)' }}>
                 Your order history will appear here
               </p>
@@ -204,12 +199,10 @@ export default function UserDashboard() {
                      className="flex items-center justify-between px-5 py-4 gap-4
                                 hover:bg-soft/30 transition-colors">
                   <div className="flex items-center gap-3 min-w-0">
-                    {/* First item image */}
                     <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0"
                          style={{ backgroundColor: 'var(--color-soft)' }}>
                       {order.orderItems?.[0]?.image ? (
-                        <img src={order.orderItems[0].image}
-                             className="w-full h-full object-cover" />
+                        <img src={order.orderItems[0].image} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
                           <FiBox size={16} style={{ color: 'var(--color-muted)' }} />
@@ -217,8 +210,7 @@ export default function UserDashboard() {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-xs font-mono font-medium"
-                         style={{ color: 'var(--color-dark)' }}>
+                      <p className="text-xs font-mono font-medium" style={{ color: 'var(--color-dark)' }}>
                         #{order._id.slice(-8).toUpperCase()}
                       </p>
                       <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
@@ -261,13 +253,11 @@ export default function UserDashboard() {
             </div>
             <div className="p-5 flex gap-3 overflow-x-auto pb-5">
               {wishlist.slice(0, 5).map(item => (
-                <Link key={item._id} to={`/products/${item._id}`}
-                      className="shrink-0 group">
+                <Link key={item._id} to={`/products/${item._id}`} className="shrink-0 group">
                   <div className="w-20 h-20 rounded-xl overflow-hidden mb-2"
                        style={{ backgroundColor: 'var(--color-soft)' }}>
                     <img src={item.image} alt={item.name}
-                         className="w-full h-full object-cover group-hover:scale-105
-                                    transition-transform duration-300" />
+                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                   </div>
                   <p className="text-xs line-clamp-2 w-20 leading-tight"
                      style={{ color: 'var(--color-dark)' }}>{item.name}</p>
@@ -277,8 +267,7 @@ export default function UserDashboard() {
               ))}
               {wishlist.length > 5 && (
                 <Link to="/wishlist"
-                      className="shrink-0 w-20 h-20 rounded-xl flex items-center
-                                 justify-center text-xs font-medium"
+                      className="shrink-0 w-20 h-20 rounded-xl flex items-center justify-center text-xs font-medium"
                       style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-primary)' }}>
                   +{wishlist.length - 5} more
                 </Link>
@@ -309,15 +298,12 @@ export default function UserDashboard() {
                 <div key={item._id} className="flex items-center gap-3 px-5 py-3">
                   <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0"
                        style={{ backgroundColor: 'var(--color-soft)' }}>
-                    <img src={item.image} alt={item.name}
-                         className="w-full h-full object-cover" />
+                    <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium line-clamp-1"
                        style={{ color: 'var(--color-dark)' }}>{item.name}</p>
-                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
-                      Qty: {item.quantity}
-                    </p>
+                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Qty: {item.quantity}</p>
                   </div>
                   <p className="text-sm font-semibold shrink-0"
                      style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-serif)' }}>
@@ -340,9 +326,9 @@ export default function UserDashboard() {
         {/* ── QUICK LINKS ── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {[
-            { to: '/dashboard/profile', icon: <FiEdit2 size={18} />,      label: 'Edit Profile',  sub: 'Update your details',      color: '#7C6A5E' },
-            { to: '/dashboard/orders',  icon: <FiPackage size={18} />,     label: 'Order History', sub: 'Track all your orders',     color: '#7C3AED' },
-            { to: '/products',          icon: <FiShoppingCart size={18} />,label: 'Shop Now',      sub: 'Explore our collection',    color: '#D4AF8C' },
+            { to: '/dashboard/profile', icon: <FiEdit2 size={18} />,       label: 'Edit Profile',  sub: 'Update your details',   color: '#7C6A5E' },
+            { to: '/dashboard/orders',  icon: <FiPackage size={18} />,      label: 'Order History', sub: 'Track all your orders',  color: '#7C3AED' },
+            { to: '/products',          icon: <FiShoppingCart size={18} />, label: 'Shop Now',      sub: 'Explore our collection', color: '#D4AF8C' },
           ].map(({ to, icon, label, sub, color }) => (
             <Link key={to} to={to}
               className="bg-white rounded-2xl p-5 flex items-center gap-4
@@ -354,9 +340,7 @@ export default function UserDashboard() {
                 {icon}
               </div>
               <div>
-                <p className="text-sm font-semibold" style={{ color: 'var(--color-dark)' }}>
-                  {label}
-                </p>
+                <p className="text-sm font-semibold" style={{ color: 'var(--color-dark)' }}>{label}</p>
                 <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{sub}</p>
               </div>
             </Link>

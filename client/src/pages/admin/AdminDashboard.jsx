@@ -4,7 +4,7 @@ import {
   FiPackage, FiUsers, FiShoppingCart, FiTrendingUp,
   FiPlus, FiEye, FiClock, FiCheckCircle, FiTruck,
   FiXCircle, FiArrowRight, FiBox, FiAlertCircle, FiTag,
-  FiHome, FiMoreHorizontal, FiGrid,
+  FiHome,
 } from 'react-icons/fi';
 import api from '../../services/api';
 
@@ -76,111 +76,17 @@ const SideLink = ({ to, icon, label }) => {
   );
 };
 
-/* ── Mobile Bottom Nav ── */
-const MobileNav = () => {
-  const { pathname } = useLocation();
-  const [showMore, setShowMore] = useState(false);
-
-  const mainLinks = [
-    { to: '/admin',          icon: <FiGrid size={20} />,        label: 'Home'     },
-    { to: '/admin/products', icon: <FiBox size={20} />,         label: 'Products' },
-    { to: '/admin/orders',   icon: <FiShoppingCart size={20} />,label: 'Orders'   },
-    { to: '/admin/users',    icon: <FiUsers size={20} />,       label: 'Users'    },
-  ];
-
-  const moreLinks = [
-    { to: '/admin/coupons',    icon: <FiTag size={18} />,     label: 'Coupons'    },
-    { to: '/admin/returns',    icon: <FiPackage size={18} />, label: 'Returns'    },
-    { to: '/admin/home-media', icon: <FiHome size={18} />,    label: 'Home Media' },
-    { to: '/',                 icon: <FiEye size={18} />,     label: 'View Store' },
-  ];
-
-  return (
-    <>
-      {/* More drawer overlay */}
-      {showMore && (
-        <div
-          className="fixed inset-0 z-40 bg-black/30"
-          onClick={() => setShowMore(false)}
-        >
-          <div
-            className="absolute bottom-16 left-0 right-0 bg-white rounded-t-2xl p-4 pb-2"
-            style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.12)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <p className="text-xs font-semibold uppercase tracking-widest mb-3 px-1"
-               style={{ color: 'var(--color-muted)' }}>More</p>
-            {moreLinks.map(({ to, icon, label }) => (
-              <Link
-                key={to}
-                to={to}
-                onClick={() => setShowMore(false)}
-                className="flex items-center gap-3 px-3 py-3 rounded-xl text-sm
-                           transition-all active:opacity-70"
-                style={{ color: 'var(--color-dark)' }}
-              >
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                     style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-primary)' }}>
-                  {icon}
-                </div>
-                {label}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Bottom bar */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t flex"
-           style={{ borderColor: 'var(--color-soft)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        {mainLinks.map(({ to, icon, label }) => {
-          const active = pathname === to;
-          return (
-            <Link
-              key={to}
-              to={to}
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2
-                         transition-colors"
-              style={{ color: active ? 'var(--color-primary)' : 'var(--color-muted)' }}
-            >
-              {icon}
-              <span className="text-[10px] font-medium">{label}</span>
-            </Link>
-          );
-        })}
-
-        {/* More button */}
-        <button
-          onClick={() => setShowMore(v => !v)}
-          className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2
-                     transition-colors border-none bg-transparent cursor-pointer"
-          style={{ color: showMore ? 'var(--color-primary)' : 'var(--color-muted)' }}
-        >
-          <FiMoreHorizontal size={20} />
-          <span className="text-[10px] font-medium">More</span>
-        </button>
-      </nav>
-    </>
-  );
-};
-
 export default function AdminDashboard() {
   const [stats, setStats]     = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // FIX: renamed from 'fetch' to 'loadStats' to avoid shadowing the global fetch API
     const loadStats = async () => {
       try {
         const { data } = await api.get('/orders/admin/stats');
         setStats(data);
       } catch {
-        setStats({
-          totalOrders:   0,
-          totalRevenue:  0,
-          pendingOrders: 0,
-          recentOrders:  [],
-        });
+        setStats({ totalOrders: 0, totalRevenue: 0, pendingOrders: 0, recentOrders: [] });
       } finally {
         setLoading(false);
       }
@@ -207,8 +113,8 @@ export default function AdminDashboard() {
            style={{ color: 'var(--color-muted)' }}>Overview</p>
         <SideLink to="/admin"            icon={<FiTrendingUp size={16} />}   label="Dashboard"  />
 
-        <p className="px-4 text-xs font-semibold uppercase tracking-widest mt-4 mb-1"
-           style={{ color: 'var(--color-muted)' }}>Manage</p>
+        {/* <p className="px-4 text-xs font-semibold uppercase tracking-widest mt-4 mb-1"
+           style={{ color: 'var(--color-muted)' }}>Manage</p> */}
         <SideLink to="/admin/products"   icon={<FiBox size={16} />}          label="Products"   />
         <SideLink to="/admin/orders"     icon={<FiShoppingCart size={16} />} label="Orders"     />
         <SideLink to="/admin/users"      icon={<FiUsers size={16} />}        label="Users"      />
@@ -225,11 +131,9 @@ export default function AdminDashboard() {
         </div>
       </aside>
 
-      {/* ── MAIN ── */}
-      {/* pb-20 adds space so content isn't hidden behind the mobile bottom nav */}
-      <main className="flex-1 p-6 max-w-5xl pb-20 lg:pb-6">
+      {/* ── MAIN — pb-24 on mobile so content clears the fixed bottom nav ── */}
+      <main className="flex-1 p-6 max-w-5xl pb-24 lg:pb-6">
 
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-semibold"
@@ -249,53 +153,49 @@ export default function AdminDashboard() {
         </div>
 
         {/* ── STAT CARDS ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" 
+        style={{
+    backgroundColor: 'var(--color-soft)',  
+    boxShadow: 'var(--shadow-card)',
+  }}  >
           {loading ? (
             [...Array(4)].map((_, i) => <SkeletonCard key={i} />)
           ) : (
             <>
               <StatCard
-                icon={<FiShoppingCart size={20} />}
-                label="Total Orders"
-                value={stats.totalOrders}
-                sub="All time orders"
-                color="#7C6A5E"
-                to="/admin/orders"
+                icon={<FiShoppingCart size={20} />} label="Total Orders"
+                value={stats.totalOrders} sub="All time orders"
+                color="#7C6A5E" to="/admin/orders"
               />
               <StatCard
-                icon={<FiTrendingUp size={20} />}
-                label="Revenue"
+                icon={<FiTrendingUp size={20} />} label="Revenue"
                 value={`₹${(stats.totalRevenue || 0).toLocaleString('en-IN')}`}
                 sub="From delivered orders only"
-                color="#D4AF8C"
-                to="/admin/orders"
+                color="#D4AF8C" to="/admin/orders"
               />
               <StatCard
-                icon={<FiClock size={20} />}
-                label="Pending"
-                value={stats.pendingOrders}
-                sub="Need attention"
-                color="#F59E0B"
-                to="/admin/orders"
+                icon={<FiClock size={20} />} label="Pending"
+                value={stats.pendingOrders} sub="Need attention"
+                color="#F59E0B" to="/admin/orders"
               />
               <StatCard
-                icon={<FiPackage size={20} />}
-                label="Products"
-                value={stats.totalProducts || '—'}
-                sub="In catalogue"
-                color="#7C3AED"
-                to="/admin/products"
+                icon={<FiPackage size={20} />} label="Products"
+                value={stats.totalProducts || '—'} sub="In catalogue"
+                color="#7C3AED" to="/admin/products"
               />
             </>
           )}
         </div>
 
         {/* ── RECENT ORDERS + QUICK ACTIONS ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{
+    backgroundColor: 'var(--color-soft)',  
+    boxShadow: 'var(--shadow-card)',
+  }}>
 
           {/* Recent Orders */}
           <div className="lg:col-span-2 bg-white rounded-2xl overflow-hidden"
-               style={{ boxShadow: 'var(--shadow-card)' }}>
+               >
             <div className="flex items-center justify-between px-5 py-4"
                  style={{ borderBottom: '1px solid var(--color-soft)' }}>
               <h2 className="text-sm font-semibold" style={{ color: 'var(--color-dark)' }}>
@@ -359,7 +259,10 @@ export default function AdminDashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4" style={{
+    backgroundColor: 'var(--color-soft)',  
+    boxShadow: 'var(--shadow-card)',
+  }}>
             <div className="bg-white rounded-2xl p-5" style={{ boxShadow: 'var(--shadow-card)' }}>
               <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--color-dark)' }}>
                 Quick Actions
@@ -407,9 +310,6 @@ export default function AdminDashboard() {
         </div>
 
       </main>
-
-      {/* ── MOBILE BOTTOM NAV ── */}
-      <MobileNav />
     </div>
   );
 }

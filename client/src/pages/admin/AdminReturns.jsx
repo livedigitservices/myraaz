@@ -141,6 +141,8 @@ export default function AdminReturns() {
           <p className="text-base font-semibold mt-0.5"
              style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>myRaaz</p>
         </div>
+        <p className="px-4 text-xs font-semibold uppercase tracking-widest mb-1"
+           style={{ color: 'var(--color-muted)' }}>Overview</p>
         <SideLink to="/admin"          icon={<FiTrendingUp size={16} />}   label="Dashboard"       />
         <SideLink to="/admin/products" icon={<FiBox size={16} />}          label="Products"        />
         <SideLink to="/admin/orders"   icon={<FiShoppingCart size={16} />} label="Orders"          />

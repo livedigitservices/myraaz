@@ -4,7 +4,7 @@ import {
   FiClock, FiCheckCircle, FiTruck, FiXCircle,
   FiPackage, FiSearch, FiTrendingUp, FiBox,
   FiUsers, FiShoppingCart, FiEye, FiChevronDown,
-  FiX, FiMapPin, FiCreditCard, FiUser, FiTag, FiMenu,
+  FiX, FiMapPin, FiCreditCard, FiUser, FiTag,
   FiHome
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
@@ -49,14 +49,15 @@ const SidebarContent = ({ onClose }) => (
       <p className="text-base font-semibold mt-0.5"
          style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>myRaaz</p>
     </div>
-    <SideLink to="/admin"          onClick={onClose} icon={<FiTrendingUp size={16} />}   label="Dashboard"      />
-    <SideLink to="/admin/products" onClick={onClose} icon={<FiBox size={16} />}          label="Products"       />
-    <SideLink to="/admin/orders"   onClick={onClose} icon={<FiShoppingCart size={16} />} label="Orders" active  />
-    <SideLink to="/admin/users"    onClick={onClose} icon={<FiUsers size={16} />}        label="Users"          />
-    <SideLink to="/admin/coupons"  onClick={onClose} icon={<FiTag size={16} />}          label="Coupons"        />
-    <SideLink to="/admin/returns" onClick={onClose} icon={<FiPackage size={16} />} label="Returns" />
-    <SideLink to="/admin/home-media" icon={<FiHome size={16} />} label="Home Media" />
-
+    <p className="px-4 text-xs font-semibold uppercase tracking-widest mb-1"
+           style={{ color: 'var(--color-muted)' }}>Overview</p>
+    <SideLink to="/admin"            onClick={onClose} icon={<FiTrendingUp size={16} />}   label="Dashboard"      />
+    <SideLink to="/admin/products"   onClick={onClose} icon={<FiBox size={16} />}          label="Products"       />
+    <SideLink to="/admin/orders"     onClick={onClose} icon={<FiShoppingCart size={16} />} label="Orders" active  />
+    <SideLink to="/admin/users"      onClick={onClose} icon={<FiUsers size={16} />}        label="Users"          />
+    <SideLink to="/admin/coupons"    onClick={onClose} icon={<FiTag size={16} />}          label="Coupons"        />
+    <SideLink to="/admin/returns"    onClick={onClose} icon={<FiPackage size={16} />}      label="Returns"        />
+    <SideLink to="/admin/home-media" onClick={onClose} icon={<FiHome size={16} />}         label="Home Media"     />
 
     <div className="mt-auto px-4">
       <Link to="/" className="flex items-center gap-2 text-xs"
@@ -315,18 +316,17 @@ const OrderDetailModal = ({ order, onClose, onStatusUpdate }) => {
    ADMIN ORDERS PAGE
 ══════════════════════════════════════ */
 export default function AdminOrders() {
-  const [orders, setOrders]           = useState([]);
-  const [loading, setLoading]         = useState(true);
-  const [search, setSearch]           = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [updating, setUpdating]       = useState(null);
+  const [orders, setOrders]               = useState([]);
+  const [loading, setLoading]             = useState(true);
+  const [search, setSearch]               = useState('');
+  const [filterStatus, setFilterStatus]   = useState('');
+  const [updating, setUpdating]           = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
-  const [mobileSidebar, setMobileSidebar] = useState(false);
 
   const statuses = ['', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'];
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchOrders = async () => {
       try {
         const { data } = await api.get('/orders/admin');
         setOrders(data);
@@ -336,7 +336,7 @@ export default function AdminOrders() {
         setLoading(false);
       }
     };
-    fetch();
+    fetchOrders();
   }, []);
 
   const handleStatusUpdate = async (orderId, status) => {
@@ -370,25 +370,6 @@ export default function AdminOrders() {
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-cream)' }}>
 
-      {/* ── MOBILE SIDEBAR OVERLAY ── */}
-      {mobileSidebar && (
-        <>
-          <div className="fixed inset-0 bg-black/30 z-40 lg:hidden"
-               onClick={() => setMobileSidebar(false)} />
-          <div className="fixed left-0 top-0 h-full w-56 bg-white z-50 flex flex-col
-                          py-6 px-3 gap-1 lg:hidden"
-               style={{ boxShadow: 'var(--shadow-soft)' }}>
-            <button onClick={() => setMobileSidebar(false)}
-              className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center
-                         rounded-full hover:bg-soft"
-              style={{ color: 'var(--color-muted)' }}>
-              <FiX size={16} />
-            </button>
-            <SidebarContent onClose={() => setMobileSidebar(false)} />
-          </div>
-        </>
-      )}
-
       {/* ── DESKTOP SIDEBAR ── */}
       <aside className="hidden lg:flex flex-col w-56 bg-white sticky top-16
                         h-[calc(100vh-64px)] border-r py-6 px-3 gap-1 shrink-0"
@@ -400,24 +381,14 @@ export default function AdminOrders() {
       <main className="flex-1 p-4 sm:p-6 min-w-0">
 
         {/* Header */}
-        <div className="flex items-center justify-between mb-6 gap-3">
-          <div className="flex items-center gap-3">
-            {/* Mobile sidebar toggle */}
-            <button onClick={() => setMobileSidebar(true)}
-              className="lg:hidden p-2 rounded-xl"
-              style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-dark)' }}>
-              <FiMenu size={18} />
-            </button>
-            <div>
-              <h1 className="text-xl sm:text-2xl font-semibold"
-                  style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
-                Orders
-              </h1>
-              <p className="text-xs sm:text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>
-                {filtered.length} of {orders.length} orders
-              </p>
-            </div>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-xl sm:text-2xl font-semibold"
+              style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
+            Orders
+          </h1>
+          <p className="text-xs sm:text-sm mt-0.5" style={{ color: 'var(--color-muted)' }}>
+            {filtered.length} of {orders.length} orders
+          </p>
         </div>
 
         {/* Search + Filter */}
@@ -543,7 +514,6 @@ export default function AdminOrders() {
                   {/* Actions row */}
                   <div className="flex items-center gap-2 pt-3"
                        style={{ borderTop: '1px solid var(--color-soft)' }}>
-                    {/* Status update */}
                     <div className="relative flex-1">
                       <select
                         value={order.status}
@@ -555,14 +525,11 @@ export default function AdminOrders() {
                         {['pending','processing','shipped','delivered','cancelled'].map(s => (
                           <option key={s} value={s}>{s}</option>
                         ))}
-                        
                       </select>
                       <FiChevronDown size={10}
                         className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none"
                         style={{ color: 'var(--color-muted)' }} />
-                      
                     </div>
-                    {/* View button */}
                     <button onClick={() => setSelectedOrder(order)}
                       className="flex items-center gap-1.5 px-3 py-2 rounded-xl
                                  text-xs font-medium shrink-0 transition-all hover:opacity-80"
