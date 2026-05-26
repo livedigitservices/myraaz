@@ -11,7 +11,7 @@ const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 const sendOTPEmail = async (email, otp) => {
   await resend.emails.send({
     from:    'myRaaz <onboarding@resend.dev>',
-    to:      email,                              // ✅ FIX 1: use actual email
+    to:      email,                              
     subject: 'Password Reset OTP – myRaaz',
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;
