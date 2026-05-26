@@ -1,5 +1,4 @@
 const Razorpay = require('razorpay');
-const Stripe   = require('stripe');
 const { creditWallet } = require('./walletService');
 
 const razorpay = new Razorpay({
@@ -7,7 +6,6 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
 
 /* ═══════════════════════════════════════
    MAIN REFUND PROCESSOR
@@ -56,40 +54,6 @@ const processRefund = async (returnDoc, order) => {
       };
     }
 
-    /* ════════════════════════════════════
-       CASE 2: STRIPE
-       User paid via Stripe (International card)
-       Money goes back to their original card
-       automatically
-    ════════════════════════════════════ */
-    if (order.paymentMethod === 'Stripe') {
-      const paymentIntentId = order.paymentResult?.id;
-
-      if (!paymentIntentId)
-        throw new Error('Stripe payment intent ID not found in order');
-
-      console.log(`Initiating Stripe refund for intent: ${paymentIntentId}`);
-
-      const refund = await stripe.refunds.create({
-        payment_intent: paymentIntentId,
-        amount:         Math.round(returnDoc.refundAmount * 100),
-        reason:         'requested_by_customer',
-        metadata: {
-          orderId:  order._id.toString(),
-          returnId: returnDoc._id.toString(),
-        },
-      });
-
-      console.log(`Stripe refund created: ${refund.id}`);
-
-      return {
-        success:  true,
-        method:   'stripe',
-        refundId: refund.id,
-        message:  `Refund of ₹${returnDoc.refundAmount} initiated via Stripe. Will reach user in 5-10 business days.`,
-        details:  refund,
-      };
-    }
 
     /* ════════════════════════════════════
        CASE 3: WALLET PAYMENT

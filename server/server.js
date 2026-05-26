@@ -10,7 +10,7 @@ const app = express();
 
 const corsOptions = {
   origin: [
-    'https://my-raaz-ecommerce.vercel.app',
+    'https://my-raaz-ecommerce-frontend.vercel.app',
     'http://localhost:5173',
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
