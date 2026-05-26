@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import {
   FiMapPin, FiCreditCard, FiCheck, FiShoppingCart,
   FiArrowLeft, FiTruck, FiShield, FiLock, FiAlertCircle,
+  FiRefreshCw, FiClock, FiSmartphone, FiX,
 } from 'react-icons/fi';
 import { toast }   from 'react-toastify';
 import api         from '../services/api';
@@ -13,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
    CONSTANTS
 ───────────────────────────────────────────── */
 const STEPS = ['Address', 'Payment', 'Review'];
+const QR_TTL_SECONDS = 15 * 60; // 15 minutes — must match backend close_by
 
 const PAYMENT_METHODS = [
   {
@@ -30,13 +32,19 @@ const PAYMENT_METHODS = [
   {
     id:    'Wallet',
     label: 'myRaaz Wallet',
-    sub:   null, // built dynamically from balance
+    sub:   null,
     emoji: '👛',
   },
 ];
 
+// Sub-modes inside the Razorpay payment step (Review screen)
+const RAZORPAY_MODES = [
+  { id: 'modal', label: 'Cards / UPI / Netbanking', icon: '💳' },
+  { id: 'qr',    label: 'Scan QR Code',             icon: '📷' },
+];
+
 /* ─────────────────────────────────────────────
-   SMALL COMPONENTS
+   SMALL UTILITIES
 ───────────────────────────────────────────── */
 const Spin = ({ size = 16 }) => (
   <svg style={{ width: size, height: size }} className="animate-spin" fill="none" viewBox="0 0 24 24">
@@ -45,8 +53,17 @@ const Spin = ({ size = 16 }) => (
   </svg>
 );
 
+function formatCountdown(seconds) {
+  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  const s = (seconds % 60).toString().padStart(2, '0');
+  return `${m}:${s}`;
+}
+
+/* ─────────────────────────────────────────────
+   PAYMENT OPTION BUTTON
+───────────────────────────────────────────── */
 const PaymentOption = ({ method, selected, onClick, walletBalance, grandTotal }) => {
-  const isWallet = method.id === 'Wallet';
+  const isWallet    = method.id === 'Wallet';
   const insufficient = isWallet && walletBalance < grandTotal;
 
   const sub = isWallet
@@ -61,7 +78,7 @@ const PaymentOption = ({ method, selected, onClick, walletBalance, grandTotal })
       style={{
         border:          selected ? '2px solid var(--color-primary)' : '1.5px solid var(--color-soft)',
         backgroundColor: selected ? 'var(--color-soft)' : 'white',
-        opacity: insufficient ? 0.6 : 1,
+        opacity:         insufficient ? 0.6 : 1,
       }}
     >
       <span className="text-2xl">{method.emoji}</span>
@@ -102,16 +119,244 @@ const SummaryRow = ({ label, value, green, bold }) => (
 );
 
 /* ─────────────────────────────────────────────
-   RAZORPAY BUTTON
-   
-   Critical fix: the order is saved to your DB only AFTER Razorpay confirms
-   payment in the handler callback. If the user cancels or closes the modal,
-   `onPlaceAndVerify` is never called and no order is created.
+   UPI QR PANEL
+   Creates a QR on mount, polls every 5 s for capture.
+   On capture → calls onVerified(paymentId).
+   On expire  → shows refresh button.
+───────────────────────────────────────────── */
+const UpiQrPanel = ({ amount, dbOrderId, onVerified }) => {
+  const [phase, setPhase]         = useState('loading'); // loading | active | success | expired | error
+  const [qrData, setQrData]       = useState(null);      // { qrId, imageUrl, closeBy }
+  const [countdown, setCountdown] = useState(QR_TTL_SECONDS);
+  const pollRef                   = useRef(null);
+  const timerRef                  = useRef(null);
+  const mountedRef                = useRef(true);
+
+  useEffect(() => { return () => { mountedRef.current = false; }; }, []);
+
+  /* Create QR */
+  const createQr = useCallback(async () => {
+    if (!mountedRef.current) return;
+    setPhase('loading');
+    setQrData(null);
+    setCountdown(QR_TTL_SECONDS);
+
+    try {
+      const { data } = await api.post('/payment/razorpay/create-upi-qr', {
+        amount,
+        orderId: dbOrderId,
+      });
+      if (!mountedRef.current) return;
+      setQrData(data);
+      setPhase('active');
+    } catch (err) {
+      if (!mountedRef.current) return;
+      setPhase('error');
+      toast.error(err.response?.data?.message || 'Failed to generate QR. Try again.');
+    }
+  }, [amount, dbOrderId]);
+
+  /* Auto-generate on mount */
+  useEffect(() => { createQr(); }, [createQr]);
+
+  /* Countdown timer */
+  useEffect(() => {
+    if (phase !== 'active') { clearInterval(timerRef.current); return; }
+    timerRef.current = setInterval(() => {
+      setCountdown(c => {
+        if (c <= 1) {
+          clearInterval(timerRef.current);
+          setPhase('expired');
+          clearInterval(pollRef.current);
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timerRef.current);
+  }, [phase]);
+
+  /* Payment polling */
+  useEffect(() => {
+    if (phase !== 'active' || !qrData?.qrId) { clearInterval(pollRef.current); return; }
+
+    const poll = async () => {
+      try {
+        const { data } = await api.get(`/payment/razorpay/qr-status/${qrData.qrId}`);
+        if (!mountedRef.current) return;
+
+        if (data.status === 'captured') {
+          clearInterval(pollRef.current);
+          clearInterval(timerRef.current);
+          setPhase('success');
+          onVerified(data.paymentId);
+        } else if (data.status === 'failed') {
+          clearInterval(pollRef.current);
+          setPhase('error');
+          toast.error('QR payment failed. Please try again.');
+        }
+      } catch {
+        // silent — keep polling
+      }
+    };
+
+    pollRef.current = setInterval(poll, 5000);
+    return () => clearInterval(pollRef.current);
+  }, [phase, qrData, onVerified]);
+
+  /* ── Loading ── */
+  if (phase === 'loading') return (
+    <div className="flex flex-col items-center justify-center py-10 gap-3">
+      <Spin size={28} />
+      <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Generating UPI QR…</p>
+    </div>
+  );
+
+  /* ── Error ── */
+  if (phase === 'error') return (
+    <div className="flex flex-col items-center justify-center py-10 gap-4">
+      <div className="w-12 h-12 rounded-full flex items-center justify-center"
+           style={{ backgroundColor: '#FEE2E2' }}>
+        <FiX size={20} color="#DC2626" />
+      </div>
+      <p className="text-sm text-center" style={{ color: 'var(--color-muted)' }}>
+        Could not generate QR code.
+      </p>
+      <button
+        onClick={createQr}
+        className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium text-white"
+        style={{ backgroundColor: 'var(--color-primary)' }}>
+        <FiRefreshCw size={13} /> Try Again
+      </button>
+    </div>
+  );
+
+  /* ── Expired ── */
+  if (phase === 'expired') return (
+    <div className="flex flex-col items-center justify-center py-10 gap-4">
+      <div className="w-12 h-12 rounded-full flex items-center justify-center"
+           style={{ backgroundColor: '#FEF3C7' }}>
+        <FiClock size={20} color="#D97706" />
+      </div>
+      <div className="text-center">
+        <p className="text-sm font-medium" style={{ color: 'var(--color-dark)' }}>QR Code Expired</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
+          This QR was valid for 15 minutes. Generate a fresh one.
+        </p>
+      </div>
+      <button
+        onClick={createQr}
+        className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium text-white"
+        style={{ backgroundColor: 'var(--color-primary)' }}>
+        <FiRefreshCw size={13} /> Refresh QR
+      </button>
+    </div>
+  );
+
+  /* ── Success ── */
+  if (phase === 'success') return (
+    <div className="flex flex-col items-center justify-center py-10 gap-3">
+      <div className="w-14 h-14 rounded-full flex items-center justify-center"
+           style={{ backgroundColor: '#D1FAE5' }}>
+        <FiCheck size={26} color="#059669" />
+      </div>
+      <p className="text-sm font-semibold" style={{ color: '#059669' }}>Payment Received!</p>
+      <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Confirming your order…</p>
+      <Spin size={18} />
+    </div>
+  );
+
+  /* ── Active ── */
+  const urgentCountdown = countdown <= 60;
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+
+      {/* Timer badge */}
+      <div
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold"
+        style={{
+          backgroundColor: urgentCountdown ? '#FEF3C7' : 'var(--color-soft)',
+          color:           urgentCountdown ? '#D97706'  : 'var(--color-primary)',
+          border:          urgentCountdown ? '1px solid #FCD34D' : '1px solid transparent',
+        }}
+      >
+        <FiClock size={11} />
+        Expires in {formatCountdown(countdown)}
+      </div>
+
+      {/* QR Image */}
+      <div
+        className="relative rounded-2xl overflow-hidden p-3"
+        style={{
+          border:      '2px solid var(--color-soft)',
+          background:  'white',
+          boxShadow:   '0 4px 24px rgba(0,0,0,0.08)',
+        }}
+      >
+        {/* Animated scanning line */}
+        <div className="absolute inset-x-3 h-0.5 rounded-full"
+             style={{
+               backgroundColor: 'var(--color-primary)',
+               opacity:         0.6,
+               animation:       'qrScan 2.5s ease-in-out infinite',
+               top:             '12px',
+             }} />
+        <img
+          src={qrData.imageUrl}
+          alt="UPI QR Code"
+          className="w-48 h-48 object-contain"
+          style={{ imageRendering: 'pixelated' }}
+        />
+        {/* Corner accents */}
+        {['top-2 left-2', 'top-2 right-2', 'bottom-2 left-2', 'bottom-2 right-2'].map(pos => (
+          <div key={pos} className={`absolute ${pos} w-4 h-4`}
+               style={{ border: '2.5px solid var(--color-primary)', borderRadius: 2 }} />
+        ))}
+      </div>
+
+      {/* Instructions */}
+      <div className="w-full rounded-xl p-4 space-y-2.5"
+           style={{ backgroundColor: 'var(--color-soft)' }}>
+        {[
+          { icon: <FiSmartphone size={13} />, text: 'Open any UPI app — GPay, PhonePe, Paytm, BHIM' },
+          { icon: '📷',                       text: 'Scan the QR code above' },
+          { icon: <FiCheck size={13} />,      text: `Confirm ₹${Number(amount).toLocaleString('en-IN')} and pay` },
+        ].map(({ icon, text }, i) => (
+          <div key={i} className="flex items-start gap-2.5">
+            <span className="shrink-0 mt-0.5" style={{ color: 'var(--color-primary)' }}>
+              {typeof icon === 'string' ? icon : icon}
+            </span>
+            <p className="text-xs leading-relaxed" style={{ color: 'var(--color-dark)' }}>{text}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Polling indicator */}
+      <div className="flex items-center gap-1.5 text-xs" style={{ color: 'var(--color-muted)' }}>
+        <span className="w-1.5 h-1.5 rounded-full bg-green-400"
+              style={{ animation: 'pulse 1.5s ease-in-out infinite' }} />
+        Waiting for payment confirmation…
+      </div>
+
+      <style>{`
+        @keyframes qrScan {
+          0%   { top: 12px;  opacity: 0.8; }
+          50%  { top: calc(100% - 12px); opacity: 0.3; }
+          100% { top: 12px;  opacity: 0.8; }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+/* ─────────────────────────────────────────────
+   RAZORPAY MODAL BUTTON  (cards / UPI collect / netbanking)
 ───────────────────────────────────────────── */
 const RazorpayButton = ({ amount, onPlaceAndVerify }) => {
-  const [loading, setLoading]   = useState(false);
-  const { userInfo }            = useAuth();
-  const cancelledRef            = useRef(false); // track dismiss without success
+  const [loading, setLoading] = useState(false);
+  const { userInfo }          = useAuth();
+  const cancelledRef          = useRef(false);
 
   const handlePay = useCallback(async () => {
     if (!window.Razorpay) {
@@ -124,7 +369,6 @@ const RazorpayButton = ({ amount, onPlaceAndVerify }) => {
 
     let rzpOrderData;
     try {
-      // Only creates a Razorpay payment session — nothing written to your DB yet.
       const { data } = await api.post('/payment/razorpay/create-order', {
         amount: Number(amount),
       });
@@ -147,21 +391,21 @@ const RazorpayButton = ({ amount, onPlaceAndVerify }) => {
         email:   userInfo?.email || '',
         contact: (userInfo?.phone || '').replace(/^\+91/, ''),
       },
-      theme: { color: '#7C6A5E' },
-      method: {
-        upi:        true,
-        card:       true,
-        netbanking: true,
-        wallet:     true,
-        emi:        false,
-        paylater:   false,
+      config: {
+        display: {
+          blocks: {
+            upi:   { name: 'Pay via UPI',         instruments: [{ method: 'upi' }] },
+            cards: { name: 'Pay via Debit/Credit', instruments: [{ method: 'card' }] },
+            nb:    { name: 'Netbanking',           instruments: [{ method: 'netbanking' }] },
+          },
+          sequence: ['block.upi', 'block.cards', 'block.nb'],
+          preferences: { show_default_blocks: false },
+        },
       },
+      theme: { color: '#7C6A5E' },
       modal: {
         ondismiss: () => {
-          // User closed modal without completing payment — do NOT create DB order.
-          if (!cancelledRef.current) {
-            toast.info('Payment cancelled');
-          }
+          if (!cancelledRef.current) toast.info('Payment cancelled');
           setLoading(false);
         },
         escape:        false,
@@ -170,7 +414,6 @@ const RazorpayButton = ({ amount, onPlaceAndVerify }) => {
         confirm_close: true,
       },
       handler: async (response) => {
-        // Razorpay confirmed payment — NOW create + verify the DB order.
         cancelledRef.current = true;
         try {
           await onPlaceAndVerify({
@@ -181,7 +424,7 @@ const RazorpayButton = ({ amount, onPlaceAndVerify }) => {
         } catch (err) {
           toast.error(
             err.response?.data?.message ||
-            'Payment received but order confirmation failed. Contact support with your payment ID: ' +
+            'Payment received but order confirmation failed. Contact support with payment ID: ' +
             response.razorpay_payment_id
           );
         } finally {
@@ -208,8 +451,8 @@ const RazorpayButton = ({ amount, onPlaceAndVerify }) => {
       style={{ backgroundColor: 'var(--color-primary)' }}
     >
       {loading
-        ? <><Spin /> Opening Razorpay...</>
-        : <>💳 Pay ₹{Number(amount).toLocaleString('en-IN')} with Razorpay</>
+        ? <><Spin /> Opening Razorpay…</>
+        : <>💳 Pay ₹{Number(amount).toLocaleString('en-IN')}</>
       }
     </button>
   );
@@ -227,9 +470,6 @@ const ADDRESS_FIELDS = [
   { name: 'pincode',  label: 'Pincode',        span: 1, type: 'text', placeholder: '500001'             },
 ];
 
-/* ─────────────────────────────────────────────
-   VALIDATION
-───────────────────────────────────────────── */
 function validateAddress(address) {
   const { fullName, phone, address: addr, city, state, pincode } = address;
   if (!fullName.trim() || !addr.trim() || !city.trim() || !state.trim())
@@ -257,6 +497,9 @@ export default function Checkout() {
   const [placed, setPlaced]               = useState(false);
   const [orderId, setOrderId]             = useState(null);
   const [payment, setPayment]             = useState('COD');
+  const [rzpMode, setRzpMode]             = useState('modal'); // 'modal' | 'qr'
+  const [qrDbOrderId, setQrDbOrderId]     = useState(null);   // DB order created before QR is shown
+  const [qrCreatingOrder, setQrCreatingOrder] = useState(false);
   const [walletBalance, setWalletBalance] = useState(0);
   const [walletLoading, setWalletLoading] = useState(true);
 
@@ -269,7 +512,6 @@ export default function Checkout() {
     pincode:  userInfo?.defaultAddress?.pincode || '',
   });
 
-  /* Fetch wallet balance once on mount */
   useEffect(() => {
     if (!userInfo) { setWalletLoading(false); return; }
     api.get('/returns/wallet')
@@ -283,7 +525,6 @@ export default function Checkout() {
     setAddress(a => ({ ...a, [name]: value }));
   }, []);
 
-  /* ── Build order payload ── */
   const buildOrderPayload = useCallback((method) => ({
     orderItems: cartItems.map(i => ({
       product:  i._id,
@@ -306,13 +547,12 @@ export default function Checkout() {
     totalPrice:    grandTotal,
   }), [cartItems, address, totalPrice, shipping, grandTotal]);
 
-  /* ── Place order in DB ── */
   const placeOrder = useCallback(async (method) => {
     const { data } = await api.post('/orders', buildOrderPayload(method));
     return data._id;
   }, [buildOrderPayload]);
 
-  /* ── Step 0 → 1 ── */
+  /* ── Step navigation ── */
   const handleAddressContinue = () => {
     const error = validateAddress(address);
     if (error) { toast.error(error); return; }
@@ -320,15 +560,51 @@ export default function Checkout() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  /* ── Step 1 → 2 ── */
   const handlePaymentContinue = () => {
     if (payment === 'Wallet' && walletBalance < grandTotal) {
-      toast.error(`Insufficient wallet balance. Please choose another payment method.`);
+      toast.error('Insufficient wallet balance. Please choose another payment method.');
       return;
     }
     setStep(2);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  /* ── When user selects QR mode, pre-create DB order so QR orderId is ready ── */
+  const handleRzpModeChange = useCallback(async (mode) => {
+    setRzpMode(mode);
+    if (mode === 'qr' && !qrDbOrderId) {
+      try {
+        setQrCreatingOrder(true);
+        const id = await placeOrder('Razorpay');
+        setQrDbOrderId(id);
+      } catch (err) {
+        toast.error(err.response?.data?.message || 'Failed to prepare order. Try again.');
+        setRzpMode('modal'); // fall back
+      } finally {
+        setQrCreatingOrder(false);
+      }
+    }
+  }, [qrDbOrderId, placeOrder]);
+
+  /* ── QR payment captured → verify on server ── */
+  const handleQrVerified = useCallback(async (paymentId) => {
+    try {
+      await api.post('/payment/razorpay/verify-qr', {
+        razorpay_payment_id: paymentId,
+        orderId:             qrDbOrderId,
+      });
+      setOrderId(qrDbOrderId);
+      clearCart();
+      setPlaced(true);
+      toast.success('Payment successful! Order placed 🎉');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      toast.error(
+        err.response?.data?.message ||
+        `Payment received but order confirmation failed. Contact support (payment ID: ${paymentId})`
+      );
+    }
+  }, [qrDbOrderId, clearCart]);
 
   /* ── COD ── */
   const handleCOD = useCallback(async () => {
@@ -367,27 +643,20 @@ export default function Checkout() {
     }
   }, [walletBalance, grandTotal, placeOrder, clearCart]);
 
-  /* ── Razorpay: called ONLY after payment confirmed by Razorpay ──
-     Order is created here, then signature is verified.
-     If placeOrder fails, we still have the razorpay_payment_id to surface to the user. */
+  /* ── Razorpay modal verify ── */
   const handleRazorpayPlaceAndVerify = useCallback(async ({
     razorpay_order_id,
     razorpay_payment_id,
     razorpay_signature,
   }) => {
-    // 1. Create the DB order
     const id = await placeOrder('Razorpay');
     setOrderId(id);
-
-    // 2. Verify signature — marks order as paid in DB
     await api.post('/payment/razorpay/verify', {
       razorpay_order_id,
       razorpay_payment_id,
       razorpay_signature,
       orderId: id,
     });
-
-    // 3. Success
     clearCart();
     setPlaced(true);
     toast.success('Payment successful! Order placed 🎉');
@@ -483,7 +752,6 @@ export default function Checkout() {
           <h1 className="text-2xl font-semibold text-white"
               style={{ fontFamily: 'var(--font-serif)' }}>Checkout</h1>
 
-          {/* Step indicator */}
           <div className="flex items-center mt-4">
             {STEPS.map((s, i) => (
               <div key={s} className="flex items-center">
@@ -569,7 +837,7 @@ export default function Checkout() {
                   ))}
                 </div>
 
-                {/* Wallet details panel */}
+                {/* Wallet panel */}
                 {payment === 'Wallet' && !walletLoading && (
                   <div className="mt-4 p-4 rounded-xl" style={{ backgroundColor: 'var(--color-soft)' }}>
                     <SummaryRow
@@ -593,7 +861,7 @@ export default function Checkout() {
                   </div>
                 )}
 
-                {/* Razorpay info panel */}
+                {/* Razorpay info */}
                 {payment === 'Razorpay' && (
                   <div className="mt-4 p-3 rounded-xl flex items-start gap-2 text-xs"
                        style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-muted)' }}>
@@ -616,10 +884,9 @@ export default function Checkout() {
                         style={{ color: 'var(--color-dark)' }}>
                       <FiMapPin size={14} style={{ color: 'var(--color-primary)' }} /> Delivering to
                     </h3>
-                    <button
-                      onClick={() => setStep(0)}
-                      className="text-xs hover:underline transition-all"
-                      style={{ color: 'var(--color-primary)' }}>
+                    <button onClick={() => setStep(0)}
+                            className="text-xs hover:underline"
+                            style={{ color: 'var(--color-primary)' }}>
                       Edit
                     </button>
                   </div>
@@ -638,10 +905,9 @@ export default function Checkout() {
                         style={{ color: 'var(--color-dark)' }}>
                       <FiCreditCard size={14} style={{ color: 'var(--color-primary)' }} /> Payment
                     </h3>
-                    <button
-                      onClick={() => setStep(1)}
-                      className="text-xs hover:underline transition-all"
-                      style={{ color: 'var(--color-primary)' }}>
+                    <button onClick={() => setStep(1)}
+                            className="text-xs hover:underline"
+                            style={{ color: 'var(--color-primary)' }}>
                       Edit
                     </button>
                   </div>
@@ -664,11 +930,8 @@ export default function Checkout() {
                       <div key={item._id} className="flex items-center gap-3">
                         <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0"
                              style={{ backgroundColor: 'var(--color-soft)' }}>
-                          <img
-                            src={item.image || item.images?.[0]}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={item.image || item.images?.[0]} alt={item.name}
+                               className="w-full h-full object-cover" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs font-medium line-clamp-1"
@@ -686,19 +949,82 @@ export default function Checkout() {
                   </div>
                 </div>
 
-                {/* Razorpay pay button — rendered in review, order created only on success */}
+                {/* ── RAZORPAY PAYMENT SECTION ── */}
                 {payment === 'Razorpay' && (
-                  <div className="bg-white rounded-2xl p-5" style={{ boxShadow: 'var(--shadow-card)' }}>
-                    <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-dark)' }}>
-                      Complete Payment
-                    </p>
-                    <p className="text-xs mb-4" style={{ color: 'var(--color-muted)' }}>
-                      Choose UPI, QR, card or netbanking inside Razorpay. Your order is created only after payment is confirmed.
-                    </p>
-                    <RazorpayButton
-                      amount={grandTotal}
-                      onPlaceAndVerify={handleRazorpayPlaceAndVerify}
-                    />
+                  <div className="bg-white rounded-2xl overflow-hidden"
+                       style={{ boxShadow: 'var(--shadow-card)' }}>
+
+                    {/* Mode switcher tabs */}
+                    <div className="flex"
+                         style={{ borderBottom: '1px solid var(--color-soft)' }}>
+                      {RAZORPAY_MODES.map(m => (
+                        <button
+                          key={m.id}
+                          onClick={() => handleRzpModeChange(m.id)}
+                          disabled={qrCreatingOrder}
+                          className="flex-1 flex items-center justify-center gap-2 py-3.5
+                                     text-xs font-semibold transition-all"
+                          style={{
+                            backgroundColor: rzpMode === m.id ? 'var(--color-soft)' : 'white',
+                            color:           rzpMode === m.id ? 'var(--color-primary)' : 'var(--color-muted)',
+                            borderBottom:    rzpMode === m.id ? '2px solid var(--color-primary)' : '2px solid transparent',
+                          }}
+                        >
+                          <span>{m.icon}</span> {m.label}
+                          {m.id === 'qr' && qrCreatingOrder && <Spin size={12} />}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="p-5">
+                      {/* Modal mode */}
+                      {rzpMode === 'modal' && (
+                        <>
+                          <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-dark)' }}>
+                            Complete Payment
+                          </p>
+                          <p className="text-xs mb-4" style={{ color: 'var(--color-muted)' }}>
+                            Pay via UPI ID, debit/credit card, or netbanking. Your order is created only after payment is confirmed.
+                          </p>
+                          <RazorpayButton
+                            amount={grandTotal}
+                            onPlaceAndVerify={handleRazorpayPlaceAndVerify}
+                          />
+                        </>
+                      )}
+
+                      {/* QR mode */}
+                      {rzpMode === 'qr' && (
+                        <>
+                          {qrCreatingOrder ? (
+                            <div className="flex flex-col items-center py-10 gap-3">
+                              <Spin size={28} />
+                              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                                Preparing your order…
+                              </p>
+                            </div>
+                          ) : qrDbOrderId ? (
+                            <UpiQrPanel
+                              amount={grandTotal}
+                              dbOrderId={qrDbOrderId}
+                              onVerified={handleQrVerified}
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center py-10 gap-4">
+                              <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
+                                Something went wrong preparing the QR.
+                              </p>
+                              <button
+                                onClick={() => handleRzpModeChange('qr')}
+                                className="flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium text-white"
+                                style={{ backgroundColor: 'var(--color-primary)' }}>
+                                <FiRefreshCw size={13} /> Retry
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -716,11 +1042,10 @@ export default function Checkout() {
               )}
 
               {step === 0 && (
-                <button
-                  onClick={handleAddressContinue}
-                  className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full
-                             text-white text-sm font-medium transition-all hover:opacity-90"
-                  style={{ backgroundColor: 'var(--color-primary)' }}>
+                <button onClick={handleAddressContinue}
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full
+                                   text-white text-sm font-medium transition-all hover:opacity-90"
+                        style={{ backgroundColor: 'var(--color-primary)' }}>
                   Continue →
                 </button>
               )}
@@ -738,36 +1063,30 @@ export default function Checkout() {
               )}
 
               {step === 2 && payment === 'COD' && (
-                <button
-                  onClick={handleCOD}
-                  disabled={loading}
-                  className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full
-                             text-white text-sm font-medium transition-all hover:opacity-90
-                             disabled:opacity-60"
-                  style={{ backgroundColor: 'var(--color-primary)' }}>
-                  {loading
-                    ? <><Spin /> Placing Order...</>
-                    : <><FiCheck size={15} /> Place Order (COD)</>
-                  }
+                <button onClick={handleCOD} disabled={loading}
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full
+                                   text-white text-sm font-medium transition-all hover:opacity-90
+                                   disabled:opacity-60"
+                        style={{ backgroundColor: 'var(--color-primary)' }}>
+                  {loading ? <><Spin /> Placing Order…</> : <><FiCheck size={15} /> Place Order (COD)</>}
                 </button>
               )}
 
               {step === 2 && payment === 'Wallet' && (
-                <button
-                  onClick={handleWalletPay}
-                  disabled={loading || walletBalance < grandTotal}
-                  className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full
-                             text-white text-sm font-medium transition-all hover:opacity-90
-                             disabled:opacity-60"
-                  style={{ backgroundColor: 'var(--color-primary)' }}>
+                <button onClick={handleWalletPay}
+                        disabled={loading || walletBalance < grandTotal}
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-full
+                                   text-white text-sm font-medium transition-all hover:opacity-90
+                                   disabled:opacity-60"
+                        style={{ backgroundColor: 'var(--color-primary)' }}>
                   {loading
-                    ? <><Spin /> Processing...</>
+                    ? <><Spin /> Processing…</>
                     : <>👛 Pay ₹{grandTotal.toLocaleString('en-IN')} from Wallet</>
                   }
                 </button>
               )}
 
-              {/* Razorpay: button is inside the review card above, not here */}
+              {/* Razorpay: action buttons are inside the card above */}
             </div>
           </div>
 
@@ -778,18 +1097,13 @@ export default function Checkout() {
               <h3 className="text-sm font-semibold mb-4" style={{ color: 'var(--color-dark)' }}>
                 Order Summary
               </h3>
-
-              {/* Item thumbnails */}
               <div className="space-y-3 mb-4">
                 {cartItems.map(item => (
                   <div key={item._id} className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0"
                          style={{ backgroundColor: 'var(--color-soft)' }}>
-                      <img
-                        src={item.image || item.images?.[0]}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={item.image || item.images?.[0]} alt={item.name}
+                           className="w-full h-full object-cover" />
                     </div>
                     <p className="flex-1 text-xs line-clamp-1" style={{ color: 'var(--color-dark)' }}>
                       {item.name}
@@ -801,24 +1115,16 @@ export default function Checkout() {
                   </div>
                 ))}
               </div>
-
               <div className="h-px mb-4" style={{ backgroundColor: 'var(--color-soft)' }} />
-
-              {/* Pricing breakdown */}
               <div className="space-y-2.5 mb-4">
                 <SummaryRow label="Subtotal"  value={`₹${totalPrice.toLocaleString('en-IN')}`} />
-                <SummaryRow
-                  label="Shipping"
-                  value={shipping === 0 ? 'Free' : `₹${shipping}`}
-                  green={shipping === 0}
-                />
+                <SummaryRow label="Shipping"  value={shipping === 0 ? 'Free' : `₹${shipping}`}
+                            green={shipping === 0} />
                 {discountAmount > 0 && (
                   <SummaryRow label="Discount" value={`− ₹${discountAmount.toLocaleString('en-IN')}`} green />
                 )}
               </div>
-
               <div className="h-px mb-4" style={{ backgroundColor: 'var(--color-soft)' }} />
-
               <div className="flex justify-between items-center mb-5">
                 <span className="font-semibold text-sm" style={{ color: 'var(--color-dark)' }}>
                   Total
@@ -828,7 +1134,6 @@ export default function Checkout() {
                   ₹{grandTotal.toLocaleString('en-IN')}
                 </span>
               </div>
-
               <div className="flex items-center justify-center gap-4 pt-4"
                    style={{ borderTop: '1px solid var(--color-soft)' }}>
                 <div className="flex items-center gap-1">

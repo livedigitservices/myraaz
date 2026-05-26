@@ -55,7 +55,7 @@ const sendOTP = async (req, res) => {
     saveOTP(formattedPhone, otp);
 
     if (!process.env.TWOFACTOR_API_KEY) {
-      /* No API key — dev fallback */
+      /* No API key — dev fallback */ 
       console.log('\n================================');
       console.log(`📱 OTP for ${formattedPhone}: ${otp}`);
       console.log('================================\n');

@@ -4,19 +4,28 @@ const { protect } = require('../middleware/authMiddleware');
 const {
   createRazorpayOrder,
   verifyRazorpayPayment,
-  createStripeIntent,
-  verifyStripePayment,
+  getRazorpayOrderStatus,
+  createUpiQr,
+  getQrPaymentStatus,
+  verifyQrPayment,
+  walletPay,
   razorpayWebhook,
 } = require('../controllers/paymentController');
 
-// Webhook — no auth, raw body handled in server.js
-router.post('/webhook/razorpay',      razorpayWebhook);
+// ── Webhook — raw body handled in server.js BEFORE express.json() ──
+router.post('/webhook/razorpay', razorpayWebhook);
 
-router.post('/razorpay/create-order', protect, createRazorpayOrder);
-router.post('/razorpay/verify',       protect, verifyRazorpayPayment);
-router.post('/stripe/create-intent',  protect, createStripeIntent);
-router.post('/stripe/verify',         protect, verifyStripePayment);
+// ── Razorpay standard checkout (cards / UPI collect / netbanking) ──
+router.post('/razorpay/create-order',                  protect, createRazorpayOrder);
+router.post('/razorpay/verify',                        protect, verifyRazorpayPayment);
+router.get( '/razorpay/order-status/:razorpayOrderId', protect, getRazorpayOrderStatus);
 
-// ❌ /wallet removed — wallet payment is handled atomically in orderController.placeOrder
+// ── Razorpay UPI QR ──
+router.post('/razorpay/create-upi-qr',   protect, createUpiQr);
+router.get( '/razorpay/qr-status/:qrId', protect, getQrPaymentStatus);
+router.post('/razorpay/verify-qr',       protect, verifyQrPayment);
+
+// ── Wallet ──
+router.post('/wallet', protect, walletPay);
 
 module.exports = router;
