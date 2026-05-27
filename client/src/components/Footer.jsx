@@ -78,9 +78,11 @@ export default function Footer() {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                <span className="text-white text-xs font-bold">M</span>
+                <span className="text-white text-xs font-bold">
+                  <img  src="/raaz_favicon.svg" alt="logo" />
+                </span>
               </div>
-              <span className="font-serif text-xl text-dark font-semibold">myRaaz</span>
+              <span className="font-serif text-xl text-dark font-semibold uppercase">my Raaz</span>
             </div>
             <p className="text-sm text-muted leading-relaxed max-w-xs">
               Premium beauty and personal care products crafted with natural

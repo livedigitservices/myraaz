@@ -23,6 +23,21 @@ const Stars = ({ rating }) => (
   </div>
 );
 
+
+/* ── Testimonials with infinite auto-scroll ── */
+const testimonials = [
+  { name: 'Priya S.',     initial: 'P', review: "The argan oil completely transformed my dry, frizzy hair in just 2 weeks. I genuinely can't live without it now!",        rating: 4 },
+  { name: 'Ananya M.',    initial: 'A', review: "Best shampoo I've ever used. My scalp feels so clean and fresh, and my hair has never looked this shiny before.",          rating: 4 },
+  { name: 'Kavitha R.',   initial: 'K', review: 'The hair mask is absolutely luxurious. My hair feels so soft and the smell is incredible. Totally worth every rupee!',  rating: 5 },
+  { name: 'Meera T.',     initial: 'M', review: 'The serum gave my hair an incredible shine after just one use. So lightweight and absolutely no greasiness at all!',      rating: 5 },
+  { name: 'Divya L.',     initial: 'D', review: 'Finally found a conditioner that actually detangles without weighing my hair down. My morning routine is so much easier.', rating: 4 },
+  { name: 'Sneha R.',     initial: 'S', review: 'The hair mask smells divine and my curls have never looked this defined. Will definitely be repurchasing very soon!',      rating: 5 },
+];
+
+
+// Duplicate for seamless infinite loop
+const track = [...testimonials, ...testimonials];
+
 /* ── Product card ── */
 const ProductCard = ({ product }) => {
   const { addToCart }                                       = useCart();
@@ -404,13 +419,60 @@ export default function Home() {
       .catch(() => setHomeMedia([]));
   }, []);
 
-  const categories = [
-    { name: 'Hair Oils',    slug: 'hair-oil',    emoji: '🌿', desc: 'Nourish & strengthen' },
-    { name: 'Shampoos',     slug: 'shampoo',     emoji: '🧴', desc: 'Cleanse & refresh'    },
-    { name: 'Conditioners', slug: 'conditioner', emoji: '✨', desc: 'Soften & detangle'    },
-    { name: 'Hair Masks',   slug: 'hair-mask',   emoji: '🍯', desc: 'Deep treat & repair'  },
-    { name: 'Serums',       slug: 'serum',       emoji: '💧', desc: 'Shine & smooth'       },
-  ];
+  // const categories = [
+  //   { name: 'Hair Oils',    slug: 'hair-oil',    emoji: '🌿', desc: 'Nourish & strengthen' },
+  //   { name: 'Shampoos',     slug: 'shampoo',     emoji: '🧴', desc: 'Cleanse & refresh'    },
+  //   { name: 'Conditioners', slug: 'conditioner', emoji: '✨', desc: 'Soften & detangle'    },
+  //   { name: 'Hair Masks',   slug: 'hair-mask',   emoji: '🍯', desc: 'Deep treat & repair'  },
+  //   { name: 'Serums',       slug: 'serum',       emoji: '💧', desc: 'Shine & smooth'       },
+  // ];
+
+  const categoryIcons = {
+  'hair-oil': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2C8 2 5 6 5 10c0 5 4 9 7 11 3-2 7-6 7-11 0-4-3-8-7-8z"/>
+      <path d="M12 6v6M9.5 9.5l2.5 2.5 2.5-2.5"/>
+    </svg>
+  ),
+  'shampoo': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="7" y="4" width="10" height="16" rx="3"/>
+      <path d="M10 4V2h4v2"/>
+      <path d="M10 10h4M10 13h2"/>
+    </svg>
+  ),
+  'conditioner': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="8" y="3" width="8" height="18" rx="3"/>
+      <path d="M8 8h8"/>
+      <path d="M11 3V1.5M13 3V1.5"/>
+      <path d="M11 13h2M11 16h2"/>
+    </svg>
+  ),
+  'hair-mask': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 3h8l1 4H7L8 3z"/>
+      <path d="M6 7v10a2 2 0 002 2h8a2 2 0 002-2V7"/>
+      <path d="M10 12h4M10 15h2"/>
+    </svg>
+  ),
+  'serum': (
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 3h6v4l2 10a2 2 0 01-2 2H9a2 2 0 01-2-2L9 7V3z"/>
+      <path d="M9 3h6"/>
+      <circle cx="12" cy="14" r="2"/>
+      <path d="M12 2v1"/>
+    </svg>
+  ),
+};
+
+const categories = [
+  { name: 'Hair Oils',    slug: 'hair-oil',    desc: 'Nourish & strengthen' },
+  { name: 'Shampoos',     slug: 'shampoo',     desc: 'Cleanse & refresh'    },
+  { name: 'Conditioners', slug: 'conditioner', desc: 'Soften & detangle'    },
+  { name: 'Hair Masks',   slug: 'hair-mask',   desc: 'Deep treat & repair'  },
+  { name: 'Serums',       slug: 'serum',       desc: 'Shine & smooth'       },
+];
 
   const perks = [
     { icon: <FiTruck size={20} />,     title: 'Free Shipping', desc: 'On orders above ₹999'       },
@@ -483,22 +545,58 @@ export default function Home() {
       </section>
 
       {/* ── PERKS BAR ── */}
-      <section style={{ backgroundColor: 'var(--color-primary)' }} className="py-8 ">
-        <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6">
-          {perks.map(({ icon, title, desc }) => (
-            <div key={title} className="flex items-center gap-3">
-              <div className="text-white/80">{icon}</div>
-              <div>
-                <p className="text-white text-sm font-medium">{title}</p>
-                <p className="text-white/60 text-xs">{desc}</p>
-              </div>
-            </div>
-          ))}
+      <section style={{ backgroundColor: 'var(--color-primary)' }} className="py-8">
+  <div className="max-w-6xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-2">
+    {perks.map(({ icon, title, desc }) => (
+      <div
+        key={title}
+        className="group flex items-center gap-3 px-4 py-3 rounded-xl
+                   transition-colors duration-300"
+        style={{ backgroundColor: 'transparent' }}
+        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.08)'}
+        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+      >
+        {/* Icon container */}
+        <div
+          className="w-10 h-10 rounded-[10px] shrink-0 flex items-center justify-center
+                     transition-all duration-400
+                     group-hover:-translate-y-1 group-hover:scale-110"
+          style={{
+            background: 'rgba(255,255,255,0.10)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), background 0.3s ease, border-color 0.3s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.22)';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.35)';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.10)';
+            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)';
+          }}
+        >
+          <div className="text-white transition-transform duration-400
+                          group-hover:scale-115"
+               style={{ transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1)' }}>
+            {icon}
+          </div>
         </div>
-      </section>
+
+        {/* Text */}
+        <div>
+          <p className="text-white text-sm font-medium transition-all duration-300
+                        group-hover:tracking-wide">
+            {title}
+          </p>
+          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.55)' }}>{desc}</p>
+        </div>
+      </div>
+    ))}
+  </div>
+</section>
 
       {/* ── CATEGORIES ── */}
-      <section className="max-w-6xl mx-auto px-4 py-16">
+      {/* <section className="max-w-6xl mx-auto px-4 py-16">
         <div className="flex items-end justify-between mb-8 ">
           <div>
             <p className="text-xs font-medium mb-1 uppercase tracking-widest"
@@ -530,8 +628,63 @@ export default function Home() {
             </Link>
           ))}
         </div>
-      </section>
+      </section> */}
 
+
+      <section className="max-w-6xl mx-auto px-4 py-16">
+  <div className="flex items-end justify-between mb-8">
+    <div>
+      <p className="text-xs font-medium mb-1 uppercase tracking-widest"
+         style={{ color: 'var(--color-accent)' }}>Browse by</p>
+      <h2 className="text-3xl font-semibold"
+          style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
+        Categories
+      </h2>
+    </div>
+    <Link to="/products" className="text-sm flex items-center gap-1 hover:gap-2 transition-all"
+          style={{ color: 'var(--color-primary)' }}>
+      View all <FiArrowRight size={14} />
+    </Link>
+  </div>
+
+  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+    {categories.map(({ name, slug, desc }) => (
+      <Link
+        key={slug}
+        to={`/products?category=${slug}`}
+        className="group flex flex-col items-center text-center p-5 rounded-2xl transition-all duration-300 hover:-translate-y-1"
+        style={{ backgroundColor: 'var(--color-soft)', boxShadow: 'var(--shadow-card)' }}
+      >
+        {/* Icon circle */}
+        <div
+          className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-all duration-300"
+          style={{
+            backgroundColor: 'var(--color-primary)',
+            color: 'white',
+            opacity: 0.85,
+            transition: 'transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease, background 0.3s ease',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = 'scale(1.12) translateY(-2px)';
+            e.currentTarget.style.opacity = '1';
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = 'scale(1) translateY(0)';
+            e.currentTarget.style.opacity = '0.85';
+          }}
+        >
+          {categoryIcons[slug]}
+        </div>
+
+        <p className="text-sm font-semibold mb-1 transition-colors duration-200"
+           style={{ color: 'var(--color-dark)' }}>
+          {name}
+        </p>
+        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{desc}</p>
+      </Link>
+    ))}
+  </div>
+</section>
       
      
 
@@ -642,44 +795,71 @@ export default function Home() {
       )}
 
       {/* ── TESTIMONIALS ── */}
-      <section className="max-w-6xl mx-auto px-4 pb-20">
-        <div className="text-center mb-10">
-          <p className="text-xs font-medium mb-1 uppercase tracking-widest"
-             style={{ color: 'var(--color-accent)' }}>What they say</p>
-          <h2 className="text-3xl font-semibold"
-              style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
-            Loved by customers
-          </h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-          {[
-            { name: 'Priya S.',    initial: 'P', review: "The argan oil completely transformed my dry, frizzy hair in just 2 weeks. I genuinely can't live without it now!",       rating: 4 },
-            { name: 'Ananya M.',   initial: 'A', review: "Best shampoo I've ever used. My scalp feels so clean and fresh, and my hair has never looked this shiny before.",         rating: 4 },
-            { name: 'Kavitha R.', initial: 'K', review: 'The hair mask is absolutely luxurious. My hair feels so soft and the smell is incredible. Totally worth every rupee!', rating: 5 },
-          ].map(({ name, initial, review, rating }) => (
-            <div key={name} className=" rounded-2xl p-6"
-                 style={{
-    backgroundColor: 'var(--color-soft)', 
-    boxShadow: 'var(--shadow-card)',
-  }}>
-              <Stars rating={rating} />
-              <p className="text-sm leading-relaxed my-4 italic"
-                 style={{ color: 'var(--color-muted)' }}>"{review}"</p>
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full flex items-center justify-center
-                                text-sm font-bold text-white"
-                     style={{ backgroundColor: 'var(--color-primary)' }}>
-                  {initial}
-                </div>
-                <div>
-                  <p className="text-sm font-medium" style={{ color: 'var(--color-dark)' }}>{name}</p>
-                  <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Verified buyer</p>
-                </div>
-              </div>
+      <section className="max-w-6xl mx-auto px-4 pb-20 overflow-hidden">
+  <div className="text-center mb-10">
+    <p className="text-xs font-medium mb-1 uppercase tracking-widest"
+       style={{ color: 'var(--color-accent)' }}>What they say</p>
+    <h2 className="text-3xl font-semibold"
+        style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
+      Loved by customers
+    </h2>
+  </div>
+
+  {/* Scroll container — no scrollbar, overflow hidden */}
+  <div
+    className="relative overflow-hidden"
+    style={{
+      maskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
+      WebkitMaskImage: 'linear-gradient(to right, transparent, black 10%, black 90%, transparent)',
+    }}
+  >
+    <div
+      className="flex gap-5"
+      style={{
+        width: 'max-content',
+        animation: 'testimonial-scroll 32s linear infinite',
+      }}
+      onMouseEnter={e => e.currentTarget.style.animationPlayState = 'paused'}
+      onMouseLeave={e => e.currentTarget.style.animationPlayState = 'running'}
+    >
+      {track.map(({ name, initial, review, rating }, i) => (
+        <div
+          key={`${name}-${i}`}
+          className="rounded-2xl p-6 flex-shrink-0"
+          style={{
+            width: '300px',
+            backgroundColor: 'var(--color-soft)',
+            boxShadow: 'var(--shadow-card)',
+          }}
+        >
+          <Stars rating={rating} />
+          <p className="text-sm leading-relaxed my-4 italic"
+             style={{ color: 'var(--color-muted)' }}>"{review}"</p>
+          <div className="flex items-center gap-3">
+            <div
+              className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white shrink-0"
+              style={{ backgroundColor: 'var(--color-primary)' }}
+            >
+              {initial}
             </div>
-          ))}
+            <div>
+              <p className="text-sm font-medium" style={{ color: 'var(--color-dark)' }}>{name}</p>
+              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Verified buyer</p>
+            </div>
+          </div>
         </div>
-      </section>
+      ))}
+    </div>
+  </div>
+
+  {/* Keyframe — add once globally (index.css or a <style> tag) */}
+  <style>{`
+    @keyframes testimonial-scroll {
+      0%   { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+  `}</style>
+</section>
 
     </div>
   );

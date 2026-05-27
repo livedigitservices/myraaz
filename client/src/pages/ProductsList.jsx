@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback ,useRef} from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   FiSearch, FiFilter, FiX, FiStar, FiShoppingCart,
@@ -12,7 +12,7 @@ import { useWishlist } from '../context/WishlistContext';
 /* ── Stars ── */
 const Stars = ({ rating }) => (
   <div className="flex items-center gap-0.5">
-    {[1,2,3,4,5].map(i => (
+    {[1, 2, 3, 4, 5].map(i => (
       <FiStar key={i} size={11}
         fill={i <= Math.round(rating) ? 'var(--color-accent)' : 'none'}
         color={i <= Math.round(rating) ? 'var(--color-accent)' : 'var(--color-muted)'}
@@ -21,11 +21,7 @@ const Stars = ({ rating }) => (
   </div>
 );
 
-/* ── Product Card Grid View ──
-   FIX: on very small screens the price+button row was overflowing.
-   Solution: stack price and button vertically below ~360px using flex-col,
-   and use a compact icon-only button on xs screens.
-── */
+/* ── Product Card Grid View ── */
 const ProductCardGrid = ({ product }) => {
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isWishlisted } = useWishlist();
@@ -75,7 +71,6 @@ const ProductCardGrid = ({ product }) => {
       <div className="p-3 sm:p-4">
         <p className="text-xs mb-0.5 truncate" style={{ color: 'var(--color-muted)' }}>{product.brand}</p>
         <Link to={`/products/${product._id}`}>
-          {/* FIX: line-clamp-2 stays but min height ensures card height stays consistent */}
           <h3 className="text-xs sm:text-sm font-semibold mb-2 line-clamp-2 leading-snug hover:underline"
               style={{ color: 'var(--color-dark)', minHeight: '2.5rem' }}>
             {product.name}
@@ -87,12 +82,6 @@ const ProductCardGrid = ({ product }) => {
           <span className="text-xs" style={{ color: 'var(--color-muted)' }}>({product.numReviews})</span>
         </div>
 
-        {/*
-          FIX: was flex items-center justify-between — on narrow 2-col cards
-          the price and button fought for space. Now we use flex-wrap so they
-          wrap to next line on very small cards, and the button is icon-only
-          on xs (Add icon + text hidden, shown on sm+).
-        */}
         <div className="flex items-center justify-between gap-1 flex-wrap">
           <span className="text-base sm:text-lg font-semibold"
                 style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-serif)' }}>
@@ -106,7 +95,6 @@ const ProductCardGrid = ({ product }) => {
                        hover:opacity-90 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ backgroundColor: 'var(--color-primary)' }}>
             <FiShoppingCart size={12} />
-            {/* Text hidden on very small cards, visible on sm+ */}
             <span className="hidden xs:inline sm:inline">Add</span>
           </button>
         </div>
@@ -115,10 +103,7 @@ const ProductCardGrid = ({ product }) => {
   );
 };
 
-/* ── Product Card List View ──
-   FIX: w-36 image was too wide on mobile (phone width ~375px → barely 200px left).
-   Now image is w-24 on mobile, w-36 on sm+.
-── */
+/* ── Product Card List View ── */
 const ProductCardList = ({ product }) => {
   const { addToCart } = useCart();
   const { addToWishlist, removeFromWishlist, isWishlisted } = useWishlist();
@@ -128,7 +113,6 @@ const ProductCardList = ({ product }) => {
     <div className="bg-white rounded-2xl overflow-hidden flex transition-all duration-200"
          style={{ boxShadow: 'var(--shadow-card)' }}>
 
-      {/* FIX: narrower image on mobile */}
       <div className="relative w-24 sm:w-36 shrink-0 overflow-hidden"
            style={{ backgroundColor: 'var(--color-soft)' }}>
         <Link to={`/products/${product._id}`} className="block h-full">
@@ -154,13 +138,11 @@ const ProductCardList = ({ product }) => {
                     style={{ color: 'var(--color-dark)' }}>{product.name}</h3>
               </Link>
             </div>
-            {/* FIX: category badge hidden on mobile to save space */}
             <span className="hidden sm:inline px-2.5 py-1 rounded-full text-xs font-medium capitalize shrink-0"
                   style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-primary)' }}>
               {product.category}
             </span>
           </div>
-          {/* Description hidden on mobile — not enough room */}
           <p className="hidden sm:block text-xs leading-relaxed mt-2 line-clamp-2"
              style={{ color: 'var(--color-muted)' }}>{product.description}</p>
         </div>
@@ -195,7 +177,6 @@ const ProductCardList = ({ product }) => {
                          text-white transition-all hover:opacity-90 disabled:opacity-40"
               style={{ backgroundColor: 'var(--color-primary)' }}>
               <FiShoppingCart size={13} />
-              {/* "Add to Cart" on sm+, just "Add" on mobile */}
               <span className="hidden sm:inline">Add to Cart</span>
               <span className="sm:hidden">Add</span>
             </button>
@@ -261,18 +242,19 @@ const Sidebar = ({
       )}
     </div>
 
-    {/* Rating */}
+    {/* Rating — FIX: toggle deselect + number type comparison */}
     <div>
       <h4 className="text-xs font-semibold uppercase tracking-widest mb-3"
           style={{ color: 'var(--color-muted)' }}>Min Rating</h4>
       <div className="space-y-1.5">
         {[4, 3, 2].map(r => (
           <button key={r}
-            onClick={() => updateFilter('minRating', r)}
+            onClick={() => updateFilter('minRating', filters.minRating === r ? '' : r)}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-all"
             style={{
               backgroundColor: filters.minRating === r ? 'var(--color-soft)' : 'transparent',
               color: 'var(--color-dark)',
+              outline: filters.minRating === r ? '1.5px solid var(--color-primary)' : 'none',
             }}>
             <Stars rating={r} />
             <span className="text-xs" style={{ color: 'var(--color-muted)' }}>& above</span>
@@ -291,10 +273,7 @@ const Sidebar = ({
   </div>
 );
 
-
-
-
-/* ── Home Media Background (banner for page header) ── */
+/* ── Home Media Background ── */
 const HomeMediaBackground = ({ media }) => {
   const [index, setIndex] = useState(0);
   const timerRef = useRef(null);
@@ -336,7 +315,6 @@ const HomeMediaBackground = ({ media }) => {
   );
 };
 
-
 /* ── Main Products Page ── */
 export default function ProductsList() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -348,12 +326,13 @@ export default function ProductsList() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode]       = useState('grid');
 
+  // FIX: coerce minRating to number so === comparisons work correctly
   const [filters, setFilters] = useState({
     search:    searchParams.get('search')    || '',
     category:  searchParams.get('category') || '',
     minPrice:  searchParams.get('minPrice') || '',
     maxPrice:  searchParams.get('maxPrice') || '',
-    minRating: searchParams.get('minRating') || '',
+    minRating: searchParams.get('minRating') ? Number(searchParams.get('minRating')) : '',
     sort:      searchParams.get('sort')     || 'newest',
     page:      Number(searchParams.get('page')) || 1,
   });
@@ -369,16 +348,14 @@ export default function ProductsList() {
     { label: 'Hair Masks',   value: 'hair-mask'   },
     { label: 'Serums',       value: 'serum'       },
   ];
+
   const [homeMedia, setHomeMedia] = useState([]);
 
-useEffect(() => {
-  api.get('/home-media')
-    .then(({ data }) => setHomeMedia(Array.isArray(data) ? data : []))
-    .catch(() => setHomeMedia([]));
-}, []);
-
-
-  
+  useEffect(() => {
+    api.get('/home-media')
+      .then(({ data }) => setHomeMedia(Array.isArray(data) ? data : []))
+      .catch(() => setHomeMedia([]));
+  }, []);
 
   const sortOptions = [
     { label: 'Newest First',      value: 'newest'      },
@@ -442,66 +419,38 @@ useEffect(() => {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--color-cream)' }}>
 
-      {/* Page Header */}
-      {/* <div style={{ backgroundColor: 'var(--color-primary)' }} className="py-10 sm:py-12">
-        <div className="max-w-6xl mx-auto px-4">
-          <p className="text-white/60 text-xs uppercase tracking-widest mb-2">Our Collection</p>
-          <h1 className="text-3xl sm:text-4xl font-semibold text-white mb-2"
-              style={{ fontFamily: 'var(--font-serif)' }}>All Products</h1>
-          <p className="text-white/70 text-sm">
+      {/* Page Header with sliding banner background */}
+      <div className="relative overflow-hidden" style={{ minHeight: 'clamp(160px, 30vw, 320px)' }}>
+        {homeMedia.length > 0 && <HomeMediaBackground media={homeMedia} />}
+        {homeMedia.length === 0 && (
+          <div className="absolute inset-0" style={{ backgroundColor: 'var(--color-primary)' }} />
+        )}
+        <div className="absolute inset-0" style={{
+          background: 'linear-gradient(135deg, rgba(26,46,26,0.90) 0%, rgba(26,46,26,0.55) 60%, rgba(26,46,26,0.25) 100%)',
+          zIndex: 1,
+        }} />
+        <div className="relative h-full flex flex-col justify-center max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
+             style={{ zIndex: 2, paddingTop: 'clamp(24px, 5vw, 56px)', paddingBottom: 'clamp(24px, 5vw, 56px)' }}>
+          <p className="text-white/60 uppercase tracking-widest mb-1 sm:mb-2"
+             style={{ fontSize: 'clamp(9px, 1.5vw, 12px)' }}>
+            Our Collection
+          </p>
+          <h1 className="font-semibold text-white leading-tight mb-1 sm:mb-2"
+              style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(22px, 4vw, 42px)' }}>
+            All Products
+          </h1>
+          <p className="text-white/70" style={{ fontSize: 'clamp(11px, 1.8vw, 14px)' }}>
             {total > 0 ? `${total} products found` : 'Explore our full range of hair care'}
           </p>
         </div>
-      </div> */}
-
-
-{/* Page Header with sliding banner background */}
-<div className="relative overflow-hidden" style={{ minHeight: 'clamp(160px, 30vw, 320px)' }}>
-
-  {/* Sliding banner */}
-  {homeMedia.length > 0 && <HomeMediaBackground media={homeMedia} />}
-
-  {/* Fallback colour when no media loaded yet */}
-  {homeMedia.length === 0 && (
-    <div className="absolute inset-0" style={{ backgroundColor: 'var(--color-primary)' }} />
-  )}
-
-  {/* Dark overlay */}
-  <div className="absolute inset-0" style={{
-    background: 'linear-gradient(135deg, rgba(26,46,26,0.90) 0%, rgba(26,46,26,0.55) 60%, rgba(26,46,26,0.25) 100%)',
-    zIndex: 1,
-  }} />
-
-  {/* Text */}
-  <div className="relative h-full flex flex-col justify-center max-w-6xl mx-auto px-4 sm:px-6 lg:px-8"
-       style={{ zIndex: 2, paddingTop: 'clamp(24px, 5vw, 56px)', paddingBottom: 'clamp(24px, 5vw, 56px)' }}>
-
-    <p className="text-white/60 uppercase tracking-widest mb-1 sm:mb-2"
-       style={{ fontSize: 'clamp(9px, 1.5vw, 12px)' }}>
-      Our Collection
-    </p>
-
-    <h1 className="font-semibold text-white leading-tight mb-1 sm:mb-2"
-        style={{ fontFamily: 'var(--font-serif)', fontSize: 'clamp(22px, 4vw, 42px)' }}>
-      All Products
-    </h1>
-
-    <p className="text-white/70"
-       style={{ fontSize: 'clamp(11px, 1.8vw, 14px)' }}>
-      {total > 0 ? `${total} products found` : 'Explore our full range of hair care'}
-    </p>
-
-  </div>
-
-</div>
-      
+      </div>
 
       <div className="max-w-6xl mx-auto px-4 py-6 sm:py-8">
 
-       
+        {/* Search + Controls */}
         <div className="flex flex-col gap-3 mb-6">
 
-          {/* Row 1: Search (full width) */}
+          {/* Row 1: Search */}
           <form onSubmit={handleSearch} className="relative w-full">
             <FiSearch size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2"
                       style={{ color: 'var(--color-muted)' }} />
@@ -528,10 +477,8 @@ useEffect(() => {
             </button>
           </form>
 
-          {/* Row 2: Sort + Filter button + View toggle */}
+          {/* Row 2: Sort + Filter + View toggle */}
           <div className="flex items-center gap-2">
-
-            {/* Sort — grows to fill available space */}
             <div className="relative flex-1">
               <select
                 value={filters.sort}
@@ -547,7 +494,6 @@ useEffect(() => {
                 style={{ color: 'var(--color-muted)' }} />
             </div>
 
-            {/* Filter button — mobile only */}
             <button onClick={() => setSidebarOpen(true)}
               className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium
                          transition-all lg:hidden relative shrink-0"
@@ -563,7 +509,6 @@ useEffect(() => {
               )}
             </button>
 
-            {/* Grid / List toggle */}
             <div className="flex items-center gap-1 p-1 rounded-xl shrink-0"
                  style={{ backgroundColor: 'var(--color-soft)' }}>
               {[['grid', <FiGrid size={15} />], ['list', <FiList size={15} />]].map(([mode, icon]) => (
@@ -642,10 +587,6 @@ useEffect(() => {
           {/* Products */}
           <div className="flex-1 min-w-0">
             {loading ? (
-              /*
-                FIX: skeleton matches actual view mode grid layout.
-                On list mode, skeletons are horizontal rectangles, not squares.
-              */
               viewMode === 'grid' ? (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5">
                   {[...Array(12)].map((_, i) => (
@@ -676,9 +617,14 @@ useEffect(() => {
                 </div>
               )
             ) : products.length === 0 ? (
+
+              /* ── FIX: modern icon empty state ── */
               <div className="text-center py-24 bg-white rounded-2xl"
                    style={{ boxShadow: 'var(--shadow-card)' }}>
-                <div className="text-5xl mb-4">🔍</div>
+                <div className="flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4"
+                     style={{ backgroundColor: 'var(--color-soft)' }}>
+                  <FiSearch size={28} style={{ color: 'var(--color-primary)' }} />
+                </div>
                 <h3 className="text-lg font-semibold mb-2" style={{ color: 'var(--color-dark)' }}>
                   No products found
                 </h3>
@@ -687,13 +633,9 @@ useEffect(() => {
                 </p>
                 <button onClick={clearFilters} className="btn-primary">Clear filters</button>
               </div>
+
             ) : (
               <>
-                {/*
-                  FIX: grid uses gap-3 on mobile (tighter), gap-5 on sm+.
-                  Still 2-col on mobile — 1-col would waste too much space —
-                  but cards are now tight enough to not overflow.
-                */}
                 <div className={viewMode === 'grid'
                   ? 'grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-5'
                   : 'flex flex-col gap-3 sm:gap-4'}>

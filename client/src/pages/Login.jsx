@@ -155,6 +155,40 @@ const handleSendOTP = async () => {
     </svg>
   );
 
+
+  const trustBadges = [
+  {
+    label: 'Login with OTP',
+    icon: (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="5" y="2" width="14" height="20" rx="2"/>
+        <path d="M12 18h.01"/>
+        <path d="M9 7h6M9 11h4"/>
+      </svg>
+    ),
+  },
+  {
+    label: 'Secure & Fast',
+    icon: (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        <path d="M9 12l2 2 4-4"/>
+      </svg>
+    ),
+  },
+  {
+    label: '100% Natural Products',
+    icon: (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 22V12"/>
+        <path d="M12 12C12 12 7 10 5 5c4 0 7 3 7 7z"/>
+        <path d="M12 12C12 12 17 10 19 5c-4 0-7 3-7 7z"/>
+        <path d="M5 19c2-2 4.5-3 7-3s5 1 7 3"/>
+      </svg>
+    ),
+  },
+];
+
   return (
     <div className="min-h-screen flex" style={{ backgroundColor: 'var(--color-cream)' }}>
 
@@ -168,11 +202,13 @@ const handleSendOTP = async () => {
 
         {/* Logo */}
         <div className="flex items-center gap-3 relative z-10">
-          <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center">
-            <span className="font-bold text-sm" style={{ color: 'var(--color-primary)' }}>M</span>
+          <div className="w-10 h-10  rounded-full flex items-center justify-center">
+            <span className="font-bold text-sm rounded-full" style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}>
+              <img  src="/raaz_favicon.svg" alt="logo" />
+            </span>
           </div>
-          <span className="text-white text-2xl font-semibold"
-                style={{ fontFamily: 'var(--font-serif)' }}>myRaaz</span>
+          <span className="text-white text-2xl font-semibold uppercase"
+                style={{ fontFamily: 'var(--font-serif)' }}>my Raaz</span>
         </div>
 
         {/* Center text */}
@@ -186,14 +222,19 @@ const handleSendOTP = async () => {
           </p>
 
           {/* Feature pills */}
-          <div className="flex flex-wrap gap-2 mt-6">
-            {['📱 Login with OTP', '🔒 Secure & Fast', '🌿 100% Natural Products'].map(t => (
-              <span key={t} className="text-xs px-3 py-1.5 rounded-full text-white/80"
-                    style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}>
-                {t}
-              </span>
-            ))}
-          </div>
+
+                <div className="flex flex-wrap gap-2 mt-6">
+        {trustBadges.map(({ label, icon }) => (
+          <span
+            key={label}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full text-white/80"
+            style={{ backgroundColor: 'rgba(255,255,255,0.15)' }}
+          >
+            <span className="text-white/70">{icon}</span>
+            {label}
+          </span>
+        ))}
+      </div>
 
           {/* Testimonial */}
           <div className="mt-8 bg-white/10 rounded-2xl p-5 backdrop-blur-sm">

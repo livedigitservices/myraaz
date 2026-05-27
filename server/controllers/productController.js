@@ -6,7 +6,8 @@ const { cloudinary } = require('../config/cloudinary');
 ───────────────────────────────────────── */
 const getProducts = async (req, res) => {
   try {
-    const { search, category, minPrice, maxPrice, sort, page = 1, limit = 12 } = req.query;
+    const { search, category, minPrice, maxPrice, minRating, sort, page = 1, limit = 12 } = req.query;
+
     let query = {};
     if (search)   query.$text    = { $search: search };
     if (category) query.category = category;
@@ -15,6 +16,8 @@ const getProducts = async (req, res) => {
       if (minPrice) query.price.$gte = Number(minPrice);
       if (maxPrice) query.price.$lte = Number(maxPrice);
     }
+    if (minRating) query.rating = { $gte: Number(minRating) };
+
     const sortOptions = {
       price_asc:   { price: 1 },
       price_desc:  { price: -1 },
@@ -22,9 +25,10 @@ const getProducts = async (req, res) => {
       newest:      { createdAt: -1 },
     };
     const sortBy = sortOptions[sort] || { createdAt: -1 };
-    const skip     = (page - 1) * limit;
-    const total    = await Product.countDocuments(query);
+    const skip   = (page - 1) * limit;
+    const total  = await Product.countDocuments(query);
     const products = await Product.find(query).sort(sortBy).skip(skip).limit(Number(limit));
+
     res.json({ products, page: Number(page), totalPages: Math.ceil(total / limit), total });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -112,10 +116,10 @@ const updateProduct = async (req, res) => {
 
     product.name        = name        || product.name;
     product.description = description || product.description;
-    product.price       = price       ? Number(price)  : product.price;
+    product.price       = price       ? Number(price) : product.price;
     product.category    = category    || product.category;
     product.brand       = brand       || product.brand;
-    product.stock       = stock       ? Number(stock)  : product.stock;
+    product.stock       = stock       ? Number(stock) : product.stock;
     product.images      = currentImages;
     product.image       = currentImages[0];
 
