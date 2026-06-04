@@ -6,6 +6,58 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET,
 });
 
+/* ═══════════════════════════════════════
+   calculateRefundAmount
+   Rules:
+     1. Shipping & delivery charges are NEVER refunded
+        (service already rendered — parcel was delivered)
+     2. Coupon discount is deducted proportionally
+        e.g. ₹100 coupon on ₹500 order = 20% discount rate
+             Returning ₹200 of items → refund = ₹200 × 80% = ₹160
+     3. Refund can never be negative
+═══════════════════════════════════════ */
+const calculateRefundAmount = (order, returnItems) => {
+  // Total value of items being returned at their original price
+  const itemsTotal = returnItems.reduce(
+    (sum, item) => sum + (item.price * item.quantity), 0
+  );
+
+  const orderItemsTotal = order.itemsPrice || order.totalPrice;
+  const isPartial       = itemsTotal < orderItemsTotal;
+
+  // Shipping is NEVER refunded — it was a logistics cost already spent
+  const shippingRefund = 0;
+
+  // Deduct coupon discount proportionally from the returned items
+  const couponDiscount = order.coupon?.discountAmount || 0;
+  let proportionalDiscount = 0;
+
+  if (couponDiscount > 0 && orderItemsTotal > 0) {
+    const returnFraction = itemsTotal / orderItemsTotal;
+    proportionalDiscount = parseFloat((couponDiscount * returnFraction).toFixed(2));
+  }
+
+  const totalRefund = Math.max(
+    0,
+    parseFloat((itemsTotal - proportionalDiscount).toFixed(2))
+  );
+
+  return {
+    itemsRefund:      itemsTotal,
+    shippingRefund,                      // always 0
+    couponDeduction:  proportionalDiscount,
+    totalRefund,
+    isPartial,
+    // Human-readable breakdown for admin panel / emails
+    breakdown: {
+      itemsValue:       itemsTotal,
+      shippingCharge:   order.shippingPrice || 0,
+      shippingRefunded: false,
+      couponDeducted:   proportionalDiscount,
+      finalRefund:      totalRefund,
+    },
+  };
+};
 
 /* ═══════════════════════════════════════
    MAIN REFUND PROCESSOR
@@ -21,9 +73,7 @@ const processRefund = async (returnDoc, order) => {
 
     /* ════════════════════════════════════
        CASE 1: RAZORPAY
-       User paid via Razorpay (UPI/Card/Netbanking)
-       Money goes back to their original payment source
-       automatically — no user bank details needed
+       Money goes back to original payment source automatically
     ════════════════════════════════════ */
     if (order.paymentMethod === 'Razorpay') {
       const paymentId = order.paymentResult?.id;
@@ -31,34 +81,28 @@ const processRefund = async (returnDoc, order) => {
       if (!paymentId)
         throw new Error('Razorpay payment ID not found in order');
 
-      console.log(`Initiating Razorpay refund for payment: ${paymentId}`);
-
       const refund = await razorpay.payments.refund(paymentId, {
-        amount: Math.round(returnDoc.refundAmount * 100), // convert to paise
-        speed:  'normal', // 'normal' = 5-7 days, 'optimum' = instant (extra fee)
+        amount: Math.round(returnDoc.refundAmount * 100), // paise
+        speed:  'normal',
         notes: {
-          orderId:   order._id.toString(),
-          returnId:  returnDoc._id.toString(),
-          reason:    returnDoc.reason,
+          orderId:  order._id.toString(),
+          returnId: returnDoc._id.toString(),
+          reason:   returnDoc.reason,
         },
       });
-
-      console.log(`Razorpay refund created: ${refund.id}`);
 
       return {
         success:  true,
         method:   'razorpay',
         refundId: refund.id,
-        message:  `Refund of ₹${returnDoc.refundAmount} initiated via Razorpay. Will reach user in 5-7 business days.`,
+        message:  `Refund of ₹${returnDoc.refundAmount} initiated via Razorpay. Will reach customer in 5–7 business days.`,
         details:  refund,
       };
     }
 
-
     /* ════════════════════════════════════
-       CASE 3: WALLET PAYMENT
-       User paid from myRaaz wallet
-       Just credit back to their wallet
+       CASE 2: WALLET PAYMENT
+       Credit back to myRaaz wallet
     ════════════════════════════════════ */
     if (order.paymentMethod === 'Wallet') {
       const wallet = await creditWallet(
@@ -67,8 +111,6 @@ const processRefund = async (returnDoc, order) => {
         `Refund for order #${order._id.toString().slice(-8).toUpperCase()}`,
         order._id,
       );
-
-      console.log(`Wallet refund completed: ₹${returnDoc.refundAmount}`);
 
       return {
         success:  true,
@@ -80,18 +122,13 @@ const processRefund = async (returnDoc, order) => {
     }
 
     /* ════════════════════════════════════
-       CASE 4: COD
-       User paid cash on delivery
-       NO digital payment to reverse
-       Options:
-         A) Credit to myRaaz wallet (easiest)
-         B) Transfer to UPI (admin does manually OR via payout API)
-         C) Bank transfer (admin does manually OR via payout API)
+       CASE 3: COD
+       User paid cash — choose refund method
     ════════════════════════════════════ */
     if (order.paymentMethod === 'COD') {
       const refundMethod = returnDoc.refundMethod;
 
-      /* Option A: Wallet credit (recommended for COD) */
+      // Option A: Wallet (default / recommended)
       if (refundMethod === 'wallet' || !refundMethod) {
         const wallet = await creditWallet(
           order.user,
@@ -99,26 +136,24 @@ const processRefund = async (returnDoc, order) => {
           `COD Refund for order #${order._id.toString().slice(-8).toUpperCase()}`,
           order._id,
         );
-
         return {
           success:  true,
           method:   'wallet_cod',
           refundId: `cod_wallet_${Date.now()}`,
-          message:  `₹${returnDoc.refundAmount} credited to myRaaz wallet. Can be used for future orders.`,
+          message:  `₹${returnDoc.refundAmount} credited to myRaaz wallet.`,
           details:  { walletBalance: wallet.balance },
         };
       }
 
-      /* Option B: UPI Payout via Razorpay Payout API */
+      // Option B: UPI Payout via Razorpay X
       if (refundMethod === 'upi' && returnDoc.upiId) {
         try {
           const payout = await processRazorpayPayout({
-            upiId:       returnDoc.upiId,
-            amount:      returnDoc.refundAmount,
-            orderId:     order._id.toString(),
-            returnId:    returnDoc._id.toString(),
+            upiId:    returnDoc.upiId,
+            amount:   returnDoc.refundAmount,
+            orderId:  order._id.toString(),
+            returnId: returnDoc._id.toString(),
           });
-
           return {
             success:  true,
             method:   'upi_payout',
@@ -128,7 +163,6 @@ const processRefund = async (returnDoc, order) => {
           };
         } catch (payoutErr) {
           console.error('UPI payout failed, falling back to wallet:', payoutErr.message);
-          /* Fallback to wallet if UPI payout fails */
           const wallet = await creditWallet(
             order.user,
             returnDoc.refundAmount,
@@ -145,21 +179,19 @@ const processRefund = async (returnDoc, order) => {
         }
       }
 
-      /* Option C: Bank transfer — mark as pending manual transfer */
+      // Option C: Bank transfer — mark for manual admin transfer
       if (refundMethod === 'bank' && returnDoc.bankDetails?.accountNumber) {
-        /* In production — use Razorpay Payouts or manual bank transfer */
-        /* For now mark as pending and admin transfers manually */
         return {
-          success:      true,
-          method:       'bank_pending',
-          refundId:     `bank_${Date.now()}`,
-          message:      `Bank transfer of ₹${returnDoc.refundAmount} marked for manual processing.`,
+          success:                true,
+          method:                 'bank_pending',
+          refundId:               `bank_${Date.now()}`,
+          message:                `Bank transfer of ₹${returnDoc.refundAmount} marked for manual processing.`,
           requiresManualTransfer: true,
-          bankDetails:  returnDoc.bankDetails,
+          bankDetails:            returnDoc.bankDetails,
         };
       }
 
-      /* Default COD fallback — wallet */
+      // Default COD fallback — wallet
       const wallet = await creditWallet(
         order.user,
         returnDoc.refundAmount,
@@ -189,36 +221,32 @@ const processRefund = async (returnDoc, order) => {
 };
 
 /* ════════════════════════════════════
-   RAZORPAY PAYOUT API
-   For COD orders where user gives UPI
-   Requires Razorpay X (business account)
+   RAZORPAY PAYOUT API (COD → UPI)
+   Requires Razorpay X account
 ════════════════════════════════════ */
 const processRazorpayPayout = async ({ upiId, amount, orderId, returnId }) => {
-  /* This requires Razorpay X account
-     Free to set up at razorpay.com/x
-     Allows you to send money to any UPI/bank */
   const axios = require('axios');
 
   const response = await axios.post(
     'https://api.razorpay.com/v1/payouts',
     {
-      account_number: process.env.RAZORPAY_ACCOUNT_NUMBER, // your RazorpayX account
+      account_number: process.env.RAZORPAY_ACCOUNT_NUMBER,
       fund_account: {
-        account_type: 'vpa', // VPA = UPI ID
+        account_type: 'vpa',
         vpa:          { address: upiId },
         contact: {
-          name:    'Customer Refund',
-          type:    'customer',
+          name:         'Customer Refund',
+          type:         'customer',
           reference_id: returnId,
         },
       },
-      amount:   Math.round(amount * 100),
-      currency: 'INR',
-      mode:     'UPI',
-      purpose:  'refund',
+      amount:               Math.round(amount * 100),
+      currency:             'INR',
+      mode:                 'UPI',
+      purpose:              'refund',
       queue_if_low_balance: true,
-      reference_id: orderId,
-      narration:    `Refund for order ${orderId.slice(-8)}`,
+      reference_id:         orderId,
+      narration:            `Refund for order ${orderId.slice(-8)}`,
     },
     {
       auth: {
@@ -229,28 +257,6 @@ const processRazorpayPayout = async ({ upiId, amount, orderId, returnId }) => {
   );
 
   return response.data;
-};
-
-/* Calculate partial refund */
-const calculateRefundAmount = (order, returnItems) => {
-  const itemsTotal = returnItems.reduce((sum, item) =>
-    sum + (item.price * item.quantity), 0
-  );
-
-  const orderItemsTotal = order.itemsPrice || order.totalPrice;
-  const isPartial       = itemsTotal < orderItemsTotal;
-
-  /* Only refund shipping if returning ALL items */
-  const shippingRefund  = !isPartial && (order.shippingPrice || 0) > 0
-    ? order.shippingPrice
-    : 0;
-
-  return {
-    itemsRefund:   itemsTotal,
-    shippingRefund,
-    totalRefund:   itemsTotal + shippingRefund,
-    isPartial,
-  };
 };
 
 module.exports = { processRefund, calculateRefundAmount };

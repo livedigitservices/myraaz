@@ -401,8 +401,9 @@ export const HomeMediaBackground = ({ media }) => {
 export default function Home() {
   const [featured,     setFeatured]     = useState([]);
   const [loading,      setLoading]      = useState(true);
-  const [bannerCoupon, setBannerCoupon] = useState(null);
-  const [homeMedia,    setHomeMedia]    = useState([]);
+  const [bannerCoupon,  setBannerCoupon]  = useState(null);
+  const [couponLoading, setCouponLoading] = useState(true);
+  const [homeMedia,     setHomeMedia]     = useState([]);
 
   useEffect(() => {
     api.get('/products?limit=8&sort=rating_desc')
@@ -411,8 +412,9 @@ export default function Home() {
       .finally(() => setLoading(false));
 
     api.get('/coupons/banner')
-      .then(({ data }) => setBannerCoupon(data))
-      .catch(() => setBannerCoupon(null));
+      .then(({ data }) => setBannerCoupon(data || null))
+      .catch(() => setBannerCoupon(null))
+      .finally(() => setCouponLoading(false));
 
     api.get('/home-media')
       .then(({ data }) => setHomeMedia(data))
@@ -741,15 +743,18 @@ const categories = [
       </section>
 
       {/* ── COUPON BANNER ── */}
-      {bannerCoupon && (
+      {/* ── COUPON BANNER ── show when loaded and a banner coupon exists */}
+      {!couponLoading && bannerCoupon?.code && (
         <section className="max-w-6xl mx-auto px-4 pb-16">
           <div className="rounded-3xl p-10 md:p-16 flex flex-col md:flex-row items-center
                           justify-between gap-8 relative overflow-hidden"
                style={{ backgroundColor: 'var(--color-dark)' }}>
+            {/* Decorative circles */}
             <div className="absolute -top-10 -right-10 w-48 h-48 rounded-full opacity-10"
                  style={{ backgroundColor: 'var(--color-accent)' }} />
             <div className="absolute -bottom-10 left-20 w-32 h-32 rounded-full opacity-5"
                  style={{ backgroundColor: 'var(--color-primary)' }} />
+
             <div className="relative z-10">
               <p className="text-xs font-medium uppercase tracking-widest mb-2"
                  style={{ color: 'var(--color-accent)' }}>Limited time offer</p>
@@ -760,30 +765,43 @@ const categories = [
                   : `Get ₹${bannerCoupon.value} off`}
                 <br />{bannerCoupon.description || 'your next order'}
               </h2>
+
               <div className="flex flex-wrap items-center gap-3">
                 <p className="text-white/60 text-sm">
                   Use code{' '}
-                  <span className="font-mono font-bold text-white bg-white/10 px-2 py-0.5 rounded">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(bannerCoupon.code)
+                        .then(() => toast.success(`Code "${bannerCoupon.code}" copied!`))
+                        .catch(() => {});
+                    }}
+                    title="Click to copy"
+                    className="font-mono font-bold text-white bg-white/10 px-2 py-0.5
+                               rounded cursor-pointer hover:bg-white/20 transition-colors">
                     {bannerCoupon.code}
-                  </span>{' '}
+                  </button>{' '}
                   at checkout
                 </p>
+
                 {bannerCoupon.minOrder > 0 && (
                   <span className="text-xs px-2 py-1 rounded-full text-white/60"
                         style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
-                    Min. order ₹{bannerCoupon.minOrder}
+                    Min. order ₹{bannerCoupon.minOrder.toLocaleString('en-IN')}
                   </span>
                 )}
+
                 {bannerCoupon.expiresAt && (
                   <span className="text-xs px-2 py-1 rounded-full text-white/60"
                         style={{ backgroundColor: 'rgba(255,255,255,0.1)' }}>
                     Expires {new Date(bannerCoupon.expiresAt).toLocaleDateString('en-IN', {
-                      day: 'numeric', month: 'short'
+                      day: 'numeric', month: 'short',
                     })}
                   </span>
                 )}
               </div>
             </div>
+
             <Link to="/products"
                   className="relative z-10 flex items-center gap-2 px-8 py-4 rounded-full
                              font-medium text-sm transition-all hover:opacity-90 shrink-0"

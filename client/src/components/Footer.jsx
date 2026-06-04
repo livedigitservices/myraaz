@@ -21,8 +21,7 @@ const SOCIAL_LINKS = [
   { label: 'Instagram', href: 'https://instagram.com/tharuntharun20', Icon: FiInstagram },
   { label: 'Twitter',   href: 'https://twitter.com/myraaz',           Icon: FiTwitter  },
   { label: 'Facebook',  href: 'https://facebook.com/myraaz',          Icon: FiFacebook },
-  { label: 'Gmail',     href: 'mailto:myraazofficial@gmail.com',           Icon: FiMail },
-  
+  { label: 'Gmail',     href: 'mailto:myraazofficial@gmail.com',      Icon: FiMail     },
 ];
 
 function SocialButton({ href, label, Icon }) {
@@ -71,15 +70,17 @@ function FooterNavColumn({ title, links }) {
 export default function Footer() {
   return (
     <footer className="bg-white border-t border-soft">
-      <div className="max-w-6xl mx-auto px-4 py-12 mt-16">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 mt-16">
 
-          {/* Brand */}
-          <div className="col-span-1 md:col-span-2">
+        {/* Main grid: stacks on mobile, 2-col on sm, 4-col on md+ */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-8">
+
+          {/* Brand — full width on mobile, spans 2 cols on md+ */}
+          <div className="col-span-2 md:col-span-2">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center shrink-0">
                 <span className="text-white text-xs font-bold">
-                  <img  src="/raaz_favicon.svg" alt="logo" />
+                  <img src="/raaz_favicon.svg" alt="logo" />
                 </span>
               </div>
               <span className="font-serif text-xl text-dark font-semibold uppercase">my Raaz</span>
@@ -88,22 +89,23 @@ export default function Footer() {
               Premium beauty and personal care products crafted with natural
               ingredients for everyday wellness.
             </p>
-            <div className="flex gap-4 mt-4">
+            <div className="flex flex-wrap gap-3 mt-4">
               {SOCIAL_LINKS.map(s => (
                 <SocialButton key={s.label} {...s} />
               ))}
             </div>
           </div>
 
-          {/* Shop */}
+          {/* Shop — col 1 on mobile grid */}
           <FooterNavColumn title="Shop" links={SHOP_LINKS} />
 
-          {/* Help */}
+          {/* Help — col 2 on mobile grid */}
           <FooterNavColumn title="Help" links={HELP_LINKS} />
 
         </div>
 
-        <div className="border-t border-soft mt-10 pt-6 mb-4 flex flex-col md:flex-row justify-between items-center gap-2 ">
+        {/* Bottom bar */}
+        <div className="border-t border-soft mt-10 pt-6 mb-4 flex flex-col sm:flex-row justify-between items-center gap-2 text-center sm:text-left">
           <p className="text-xs text-muted">
             © {new Date().getFullYear()} myRaaz. All rights reserved.
           </p>
@@ -111,6 +113,7 @@ export default function Footer() {
             ♥ Inspired by nature. Crafted for modern beauty.
           </p>
         </div>
+
       </div>
     </footer>
   );

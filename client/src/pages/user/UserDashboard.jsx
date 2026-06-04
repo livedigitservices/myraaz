@@ -115,7 +115,7 @@ export default function UserDashboard() {
       {/* ── MAIN — pb-24 on mobile so content clears the fixed bottom nav ── */}
       <main className="flex-1 p-6 pb-24 lg:pb-6 max-w-4xl">
 
-        <div className="mb-8">
+        <div className="mb-8 " >
           <p className="text-xs font-medium uppercase tracking-widest mb-1"
              style={{ color: 'var(--color-accent)' }}>Welcome back</p>
           <h1 className="text-2xl font-semibold"
@@ -128,7 +128,7 @@ export default function UserDashboard() {
         </div>
 
         {/* ── STATS ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-8 ">
           {stats.map(({ icon, label, value, color, to }) => (
             <Link key={label} to={to}
               className="bg-white rounded-2xl p-4 flex items-center gap-3
