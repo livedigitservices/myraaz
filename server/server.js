@@ -12,6 +12,8 @@ const corsOptions = {
   origin: [
     'https://my-raaz-ecommerce-frontend.vercel.app',
     'http://localhost:5173',
+    'https://www.myraaz.in',   
+    'https://myraaz.in',
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],

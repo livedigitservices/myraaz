@@ -51,7 +51,7 @@ export default function Navbar() {
           <div className="w-8 h-8 rounded-full flex items-center justify-center"
                style={{ backgroundColor: 'var(--color-primary)' }}>
             {/* <span className="text-white text-xs font-bold">M</span> */}
-            <img src="./raaz_favicon.svg" alt="logo" />
+            <img src="./raaz_favicon.svg" alt="" />
           </div>
           <span className="text-xl font-semibold uppercase"
                 style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-primary)' }}>
