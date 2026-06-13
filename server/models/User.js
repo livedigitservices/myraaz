@@ -14,11 +14,11 @@ const userSchema = new mongoose.Schema(
       trim:     true,
     },
     email: {
-      type:     String,
-      required: [true, 'Email is required'],
-      unique:   true,
+      type:      String,
+      required:  [true, 'Email is required'],
+      unique:    true,
       lowercase: true,
-      trim:     true,
+      trim:      true,
       sparse:    true,
     },
     password: {
@@ -31,15 +31,9 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
-    // Wishlist — array of Product references
-    wishlist: [
-      { type: mongoose.Schema.Types.ObjectId, ref: 'Product' }
-    ],
+    wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+    cart:     [cartItemSchema],
 
-    // Cart — array of { product, quantity }
-    cart: [cartItemSchema],
-
-    // Shipping address saved for faster checkout
     defaultAddress: {
       address: String,
       city:    String,
@@ -52,12 +46,19 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     isPhoneUser: {
-  type:    Boolean,
-  default: false,
-},
-returnCount:   { type: Number, default: 0 },
-flaggedCount:  { type: Number, default: 0 },
-isFraudSuspect: { type: Boolean, default: false },
+      type:    Boolean,
+      default: false,
+    },
+
+    returnCount:    { type: Number,  default: 0 },
+    flaggedCount:   { type: Number,  default: 0 },
+    isFraudSuspect: { type: Boolean, default: false },
+
+    // ── Password-reset OTP (persisted in DB so it survives serverless cold starts) ──
+    resetOtpHash:     { type: String,  select: false },
+    resetOtpExpiry:   { type: Number,  select: false },
+    resetOtpAttempts: { type: Number,  default: 0, select: false },
+    resetOtpVerified: { type: Boolean, default: false, select: false },
   },
   { timestamps: true }
 );
@@ -71,7 +72,7 @@ userSchema.pre('save', async function () {
 
 // Compare entered password with hashed password
 userSchema.methods.matchPassword = async function (enteredPassword) {
-  return await bcrypt.compare(enteredPassword, this.password);
+  return bcrypt.compare(enteredPassword, this.password);
 };
 
 module.exports = mongoose.model('User', userSchema);

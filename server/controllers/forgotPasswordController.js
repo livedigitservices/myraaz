@@ -1,17 +1,27 @@
+/**
+ * forgotPasswordController.js
+ *
+ * FIX: OTP was stored in an in-memory Map — data lost on every server restart/cold start
+ * (critical on Vercel's serverless). Replaced with User model fields: resetOtpHash,
+ * resetOtpExpiry, resetOtpAttempts, resetOtpVerified. These persist in MongoDB.
+ *
+ * Also: password minimum length unified to 6 chars (matches User model schema).
+ */
+
 const bcrypt     = require('bcryptjs');
 const crypto     = require('crypto');
 const { Resend } = require('resend');
 const User       = require('../models/User');
 
-const resend   = new Resend(process.env.RESEND_API_KEY);
-const otpStore = new Map();
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const generateOTP = () => crypto.randomInt(100000, 999999).toString();
+const generateOTP    = () => crypto.randomInt(100000, 999999).toString();
+const isValidEmail   = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
 const sendOTPEmail = async (email, otp) => {
   await resend.emails.send({
-    from:    'myRaaz <onboarding@resend.dev>',
-    to:      email,                              
+    from:    `myRaaz <${process.env.EMAIL_FROM || 'onboarding@resend.dev'}>`,
+    to:      email,
     subject: 'Password Reset OTP – myRaaz',
     html: `
       <div style="font-family:sans-serif;max-width:480px;margin:auto;padding:32px;
@@ -39,27 +49,29 @@ const forgotPassword = async (req, res) => {
   try {
     const email = req.body.email?.toLowerCase().trim();
 
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+    if (!email || !isValidEmail(email))
       return res.status(400).json({ message: 'Invalid email address' });
 
     const user = await User.findOne({ email });
+    // Always return the same message to prevent email enumeration
     if (!user)
       return res.status(200).json({ message: 'If this email is registered, an OTP has been sent.' });
 
-    // ✅ FIX 2: correct rate-limit — block if OTP was sent less than 60s ago
-    const existing = otpStore.get(email);
-    if (existing && Date.now() < existing.expiresAt - 9 * 60 * 1000)
-      return res.status(429).json({ message: 'Please wait before requesting a new OTP.' });
+    // Rate limit: block if OTP was sent less than 60 seconds ago
+    if (user.resetOtpExpiry && Date.now() < user.resetOtpExpiry - 9 * 60 * 1000) {
+      return res.status(429).json({ message: 'Please wait 60 seconds before requesting a new OTP.' });
+    }
 
-    const otp       = generateOTP();
-    const hashedOtp = await bcrypt.hash(otp, 10);
+    const otp      = generateOTP();
+    const hashed   = await bcrypt.hash(otp, 10);
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
 
-    otpStore.set(email, {
-      hashedOtp,
-      expiresAt: Date.now() + 10 * 60 * 1000,
-      verified:  false,
-      attempts:  0,
-    });
+    // Persist OTP in DB — survives serverless cold starts
+    user.resetOtpHash     = hashed;
+    user.resetOtpExpiry   = expiresAt;
+    user.resetOtpAttempts = 0;
+    user.resetOtpVerified = false;
+    await user.save();
 
     await sendOTPEmail(email, otp);
 
@@ -79,31 +91,37 @@ const verifyResetOTP = async (req, res) => {
     if (!email || !otp)
       return res.status(400).json({ message: 'Email and OTP are required.' });
 
-    const record = otpStore.get(email);
-
-    if (!record)
+    const user = await User.findOne({ email });
+    if (!user || !user.resetOtpHash)
       return res.status(400).json({ message: 'No OTP found. Please request a new one.' });
 
-    if (Date.now() > record.expiresAt) {
-      otpStore.delete(email);
+    if (Date.now() > user.resetOtpExpiry) {
+      user.resetOtpHash = undefined;
+      user.resetOtpExpiry = undefined;
+      await user.save();
       return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
     }
 
-    if (record.attempts >= 5) {
-      otpStore.delete(email);
-      return res.status(429).json({ message: 'Too many attempts. Please request a new OTP.' });
+    if (user.resetOtpAttempts >= 5) {
+      user.resetOtpHash = undefined;
+      user.resetOtpExpiry = undefined;
+      await user.save();
+      return res.status(429).json({ message: 'Too many failed attempts. Please request a new OTP.' });
     }
 
-    const isValid = await bcrypt.compare(otp, record.hashedOtp);
+    const isValid = await bcrypt.compare(otp, user.resetOtpHash);
     if (!isValid) {
-      record.attempts += 1;
+      user.resetOtpAttempts += 1;
+      await user.save();
       return res.status(400).json({
-        message: `Invalid OTP. ${5 - record.attempts} attempt(s) remaining.`,
+        message: `Invalid OTP. ${5 - user.resetOtpAttempts} attempt(s) remaining.`,
       });
     }
 
-    record.verified  = true;
-    record.expiresAt = Date.now() + 5 * 60 * 1000;
+    // Mark verified, extend session by 5 min for password reset step
+    user.resetOtpVerified = true;
+    user.resetOtpExpiry   = Date.now() + 5 * 60 * 1000;
+    await user.save();
 
     res.status(200).json({ message: 'OTP verified successfully.' });
   } catch (err) {
@@ -121,33 +139,34 @@ const resetPassword = async (req, res) => {
     if (!email || !otp || !newPassword)
       return res.status(400).json({ message: 'All fields are required.' });
 
-    if (newPassword.length < 8)                          // ✅ FIX 3: 6 → 8 to match frontend
-      return res.status(400).json({ message: 'Password must be at least 8 characters.' });
+    if (newPassword.length < 6)
+      return res.status(400).json({ message: 'Password must be at least 6 characters.' });
 
-    const record = otpStore.get(email);
+    const user = await User.findOne({ email });
 
-    if (!record || !record.verified)
+    if (!user || !user.resetOtpVerified || !user.resetOtpHash)
       return res.status(400).json({ message: 'Please complete OTP verification first.' });
 
-    if (Date.now() > record.expiresAt) {
-      otpStore.delete(email);
+    if (Date.now() > user.resetOtpExpiry) {
+      user.resetOtpHash = undefined;
+      await user.save();
       return res.status(400).json({ message: 'Session expired. Please start over.' });
     }
 
-    const isValid = await bcrypt.compare(otp, record.hashedOtp);
+    const isValid = await bcrypt.compare(otp, user.resetOtpHash);
     if (!isValid) {
-      otpStore.delete(email);
+      user.resetOtpHash = undefined;
+      await user.save();
       return res.status(400).json({ message: 'Invalid session. Please start over.' });
     }
 
-    const user = await User.findOne({ email });
-    if (!user)
-      return res.status(404).json({ message: 'User not found.' });
-
-    user.password = newPassword;
+    // Clear OTP fields before saving new password
+    user.password         = newPassword;
+    user.resetOtpHash     = undefined;
+    user.resetOtpExpiry   = undefined;
+    user.resetOtpAttempts = undefined;
+    user.resetOtpVerified = undefined;
     await user.save();
-
-    otpStore.delete(email);
 
     res.status(200).json({ message: 'Password reset successfully.' });
   } catch (err) {

@@ -1,0 +1,26 @@
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.production
+.env.staging
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.vite/
+.vite-temp/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/

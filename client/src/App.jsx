@@ -78,7 +78,7 @@ function AppLayout() {
           <Route path="/admin/users"              element={<AdminRoute><AdminUsers /></AdminRoute>} />
           <Route path="/admin/coupons"            element={<AdminRoute><AdminCoupons /></AdminRoute>} />
           <Route path="/admin/returns"            element={<AdminRoute><AdminReturns /></AdminRoute>} />
-          <Route path="/admin/home-media"         element={<AdminHomeMedia />} />
+          <Route path="/admin/home-media"         element={<AdminRoute><AdminHomeMedia /></AdminRoute>} />
 
           <Route path="/about"           element={<AboutPage />} />
           <Route path="/contact"         element={<ContactPage />} />
