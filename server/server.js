@@ -25,6 +25,8 @@ connectDB();
 const app = express();
 
 const allowedOrigins = [
+  'https://www.myraaz.in',
+  'https://myraaz.in',
   'https://my-raaz-ecommerce-frontend.vercel.app',
   'http://localhost:5173',
 ];
@@ -65,6 +67,10 @@ app.get('/', (req, res) => res.send('myRaaz API is running 🌿'));
 
 // Global error handler
 app.use((err, req, res, next) => {
+  if (err.message?.startsWith('CORS blocked')) {
+    console.warn(err.message);
+    return res.status(403).json({ message: 'Origin not allowed by CORS policy' });
+  }
   console.error('Unhandled error:', err.message);
   res.status(err.status || 500).json({ message: err.message || 'Internal server error' });
 });
