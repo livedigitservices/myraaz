@@ -1,11 +1,9 @@
 /**
  * forgotPasswordController.js
  *
- * FIX: OTP was stored in an in-memory Map — data lost on every server restart/cold start
- * (critical on Vercel's serverless). Replaced with User model fields: resetOtpHash,
- * resetOtpExpiry, resetOtpAttempts, resetOtpVerified. These persist in MongoDB.
- *
- * Also: password minimum length unified to 6 chars (matches User model schema).
+ * FIX: OTP fields use `select: false` in User schema — must explicitly
+ * select them in every findOne. Also added nullish coalescing for
+ * resetOtpAttempts to handle old users where the field may be undefined.
  */
 
 const bcrypt     = require('bcryptjs');
@@ -15,8 +13,10 @@ const User       = require('../models/User');
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-const generateOTP    = () => crypto.randomInt(100000, 999999).toString();
-const isValidEmail   = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+const OTP_FIELDS = '+resetOtpHash +resetOtpExpiry +resetOtpAttempts +resetOtpVerified';
+
+const generateOTP  = () => crypto.randomInt(100000, 999999).toString();
+const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
 const sendOTPEmail = async (email, otp) => {
   await resend.emails.send({
@@ -44,7 +44,7 @@ const sendOTPEmail = async (email, otp) => {
   });
 };
 
-/* STEP 1 — Send OTP */
+/* ── STEP 1 — Send OTP ── */
 const forgotPassword = async (req, res) => {
   try {
     const email = req.body.email?.toLowerCase().trim();
@@ -52,21 +52,20 @@ const forgotPassword = async (req, res) => {
     if (!email || !isValidEmail(email))
       return res.status(400).json({ message: 'Invalid email address' });
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select(OTP_FIELDS);
+
     // Always return the same message to prevent email enumeration
     if (!user)
       return res.status(200).json({ message: 'If this email is registered, an OTP has been sent.' });
 
     // Rate limit: block if OTP was sent less than 60 seconds ago
-    if (user.resetOtpExpiry && Date.now() < user.resetOtpExpiry - 9 * 60 * 1000) {
+    if (user.resetOtpExpiry && Date.now() < user.resetOtpExpiry - 9 * 60 * 1000)
       return res.status(429).json({ message: 'Please wait 60 seconds before requesting a new OTP.' });
-    }
 
-    const otp      = generateOTP();
-    const hashed   = await bcrypt.hash(otp, 10);
+    const otp       = generateOTP();
+    const hashed    = await bcrypt.hash(otp, 10);
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
 
-    // Persist OTP in DB — survives serverless cold starts
     user.resetOtpHash     = hashed;
     user.resetOtpExpiry   = expiresAt;
     user.resetOtpAttempts = 0;
@@ -82,7 +81,7 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-/* STEP 2 — Verify OTP */
+/* ── STEP 2 — Verify OTP ── */
 const verifyResetOTP = async (req, res) => {
   try {
     const email = req.body.email?.toLowerCase().trim();
@@ -91,19 +90,20 @@ const verifyResetOTP = async (req, res) => {
     if (!email || !otp)
       return res.status(400).json({ message: 'Email and OTP are required.' });
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select(OTP_FIELDS);
+
     if (!user || !user.resetOtpHash)
       return res.status(400).json({ message: 'No OTP found. Please request a new one.' });
 
     if (Date.now() > user.resetOtpExpiry) {
-      user.resetOtpHash = undefined;
+      user.resetOtpHash   = undefined;
       user.resetOtpExpiry = undefined;
       await user.save();
       return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
     }
 
-    if (user.resetOtpAttempts >= 5) {
-      user.resetOtpHash = undefined;
+    if ((user.resetOtpAttempts ?? 0) >= 5) {
+      user.resetOtpHash   = undefined;
       user.resetOtpExpiry = undefined;
       await user.save();
       return res.status(429).json({ message: 'Too many failed attempts. Please request a new OTP.' });
@@ -111,14 +111,14 @@ const verifyResetOTP = async (req, res) => {
 
     const isValid = await bcrypt.compare(otp, user.resetOtpHash);
     if (!isValid) {
-      user.resetOtpAttempts += 1;
+      user.resetOtpAttempts = (user.resetOtpAttempts ?? 0) + 1;
       await user.save();
       return res.status(400).json({
         message: `Invalid OTP. ${5 - user.resetOtpAttempts} attempt(s) remaining.`,
       });
     }
 
-    // Mark verified, extend session by 5 min for password reset step
+    // Mark verified, extend session by 5 min for the password reset step
     user.resetOtpVerified = true;
     user.resetOtpExpiry   = Date.now() + 5 * 60 * 1000;
     await user.save();
@@ -130,7 +130,7 @@ const verifyResetOTP = async (req, res) => {
   }
 };
 
-/* STEP 3 — Reset Password */
+/* ── STEP 3 — Reset Password ── */
 const resetPassword = async (req, res) => {
   try {
     const email = req.body.email?.toLowerCase().trim();
@@ -142,7 +142,7 @@ const resetPassword = async (req, res) => {
     if (newPassword.length < 6)
       return res.status(400).json({ message: 'Password must be at least 6 characters.' });
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select(OTP_FIELDS);
 
     if (!user || !user.resetOtpVerified || !user.resetOtpHash)
       return res.status(400).json({ message: 'Please complete OTP verification first.' });
@@ -160,7 +160,7 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ message: 'Invalid session. Please start over.' });
     }
 
-    // Clear OTP fields before saving new password
+    // pre('save') hook will hash the new password automatically
     user.password         = newPassword;
     user.resetOtpHash     = undefined;
     user.resetOtpExpiry   = undefined;
