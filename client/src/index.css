@@ -185,3 +185,93 @@
     border-radius: 9999px;
   }
 }
+
+/* ── Modern Toast ── */
+.Toastify__toast-container--bottom-right {
+  bottom:  24px !important;
+  right:   24px !important;
+  width:   340px !important;
+  padding: 0 !important;
+}
+
+.Toastify__toast {
+  font-family:   'DM Sans', sans-serif !important;
+  font-size:     13.5px !important;
+  font-weight:   500 !important;
+  border-radius: 14px !important;
+  padding:       13px 16px !important;
+  min-height:    unset !important;
+  margin-bottom: 8px !important;
+  box-shadow:    0 4px 24px rgba(0,0,0,0.10) !important;
+  gap:           10px !important;
+  color:         #1A2E1A !important;
+}
+
+.Toastify__toast--success {
+  background: #F0FDF4 !important;
+  border:     1.5px solid #86efac !important;
+  color:      #1A2E1A !important;
+}
+.Toastify__toast--error {
+  background: #FFF1F2 !important;
+  border:     1.5px solid #fca5a5 !important;
+  color:      #1A2E1A !important;
+}
+.Toastify__toast--info {
+  background: #EFF6FF !important;
+  border:     1.5px solid #93c5fd !important;
+  color:      #1A2E1A !important;
+}
+.Toastify__toast--warning {
+  background: #FFFBEB !important;
+  border:     1.5px solid #fcd34d !important;
+  color:      #1A2E1A !important;
+}
+
+.Toastify__toast-body {
+  color:       #1A2E1A !important;
+  font-family: 'DM Sans', sans-serif !important;
+  font-size:   13.5px !important;
+  font-weight: 500 !important;
+  padding:     0 !important;
+  margin:      0 !important;
+  line-height: 1.45 !important;
+}
+
+.Toastify__toast-body > div,
+.Toastify__toast-body > div > * {
+  color: #1A2E1A !important;
+}
+
+.Toastify__toast--success .Toastify__toast-icon svg { color: #16a34a !important; fill: #16a34a !important; }
+.Toastify__toast--error   .Toastify__toast-icon svg { color: #dc2626 !important; fill: #dc2626 !important; }
+.Toastify__toast--info    .Toastify__toast-icon svg { color: #2563eb !important; fill: #2563eb !important; }
+.Toastify__toast--warning .Toastify__toast-icon svg { color: #d97706 !important; fill: #d97706 !important; }
+
+.Toastify__progress-bar--success { background: #16a34a !important; }
+.Toastify__progress-bar--error   { background: #dc2626 !important; }
+.Toastify__progress-bar--info    { background: #2563eb !important; }
+.Toastify__progress-bar--warning { background: #d97706 !important; }
+
+.Toastify__progress-bar {
+  height:        3px !important;
+  border-radius: 0 0 14px 14px !important;
+  bottom:        0 !important;
+  opacity:       0.6 !important;
+}
+
+.Toastify__slide-enter--bottom-right {
+  animation: toastIn  0.3s cubic-bezier(0.21, 1.02, 0.73, 1) forwards !important;
+}
+.Toastify__slide-exit--bottom-right {
+  animation: toastOut 0.25s ease-in forwards !important;
+}
+
+@keyframes toastIn  {
+  from { transform: translateX(110%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes toastOut {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(110%); opacity: 0; }
+}

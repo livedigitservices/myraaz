@@ -13,11 +13,16 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <CartProvider>
       <WishlistProvider>
         <App />
-        <ToastContainer
-          position="top-right"
-          autoClose={2500}
-          toastClassName="!rounded-xl !font-sans !text-sm"
-        />
+       <ToastContainer
+  position="top-right"
+  autoClose={2500}
+  hideProgressBar={false}
+  newestOnTop
+  closeOnClick
+  pauseOnHover
+  draggable
+  closeButton={false}
+/>
       </WishlistProvider>
     </CartProvider>
   </AuthProvider>
