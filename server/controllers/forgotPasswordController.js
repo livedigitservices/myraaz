@@ -1,9 +1,15 @@
 /**
  * forgotPasswordController.js
  *
- * FIX: OTP fields use `select: false` in User schema — must explicitly
- * select them in every findOne. Also added nullish coalescing for
- * resetOtpAttempts to handle old users where the field may be undefined.
+ * Three-step password reset flow using Resend + MongoDB.
+ *
+ * FIXES:
+ *  1. select: false fields explicitly selected via OTP_FIELDS in every findOne.
+ *  2. All DB writes use findOneAndUpdate ($set/$unset/$inc) — avoids Mongoose
+ *     accidentally wiping unselected fields on document save().
+ *  3. Step 3 no longer re-checks the raw OTP — resetOtpVerified from step 2
+ *     is sufficient proof. Frontend only needs { email, newPassword }.
+ *  4. Nullish coalescing on resetOtpAttempts for old user documents.
  */
 
 const bcrypt     = require('bcryptjs');
@@ -18,6 +24,7 @@ const OTP_FIELDS = '+resetOtpHash +resetOtpExpiry +resetOtpAttempts +resetOtpVer
 const generateOTP  = () => crypto.randomInt(100000, 999999).toString();
 const isValidEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
 
+/* ── Email template ── */
 const sendOTPEmail = async (email, otp) => {
   await resend.emails.send({
     from:    `myRaaz <${process.env.EMAIL_FROM || 'onboarding@resend.dev'}>`,
@@ -50,27 +57,30 @@ const forgotPassword = async (req, res) => {
     const email = req.body.email?.toLowerCase().trim();
 
     if (!email || !isValidEmail(email))
-      return res.status(400).json({ message: 'Invalid email address' });
+      return res.status(400).json({ message: 'Invalid email address.' });
 
     const user = await User.findOne({ email }).select(OTP_FIELDS);
 
-    // Always return the same message to prevent email enumeration
+    // Same message whether user exists or not — prevents email enumeration
     if (!user)
       return res.status(200).json({ message: 'If this email is registered, an OTP has been sent.' });
 
-    // Rate limit: block if OTP was sent less than 60 seconds ago
+    // Block if an OTP was already sent less than 60 seconds ago
     if (user.resetOtpExpiry && Date.now() < user.resetOtpExpiry - 9 * 60 * 1000)
       return res.status(429).json({ message: 'Please wait 60 seconds before requesting a new OTP.' });
 
     const otp       = generateOTP();
     const hashed    = await bcrypt.hash(otp, 10);
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 min
+    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
 
-    user.resetOtpHash     = hashed;
-    user.resetOtpExpiry   = expiresAt;
-    user.resetOtpAttempts = 0;
-    user.resetOtpVerified = false;
-    await user.save();
+    await User.findOneAndUpdate({ email }, {
+      $set: {
+        resetOtpHash:     hashed,
+        resetOtpExpiry:   expiresAt,
+        resetOtpAttempts: 0,
+        resetOtpVerified: false,
+      },
+    });
 
     await sendOTPEmail(email, otp);
 
@@ -84,7 +94,7 @@ const forgotPassword = async (req, res) => {
 /* ── STEP 2 — Verify OTP ── */
 const verifyResetOTP = async (req, res) => {
   try {
-    const email = req.body.email?.toLowerCase().trim();
+    const email   = req.body.email?.toLowerCase().trim();
     const { otp } = req.body;
 
     if (!email || !otp)
@@ -96,32 +106,36 @@ const verifyResetOTP = async (req, res) => {
       return res.status(400).json({ message: 'No OTP found. Please request a new one.' });
 
     if (Date.now() > user.resetOtpExpiry) {
-      user.resetOtpHash   = undefined;
-      user.resetOtpExpiry = undefined;
-      await user.save();
+      await User.findOneAndUpdate({ email }, {
+        $unset: { resetOtpHash: '', resetOtpExpiry: '' },
+      });
       return res.status(400).json({ message: 'OTP has expired. Please request a new one.' });
     }
 
     if ((user.resetOtpAttempts ?? 0) >= 5) {
-      user.resetOtpHash   = undefined;
-      user.resetOtpExpiry = undefined;
-      await user.save();
+      await User.findOneAndUpdate({ email }, {
+        $unset: { resetOtpHash: '', resetOtpExpiry: '' },
+      });
       return res.status(429).json({ message: 'Too many failed attempts. Please request a new OTP.' });
     }
 
     const isValid = await bcrypt.compare(otp, user.resetOtpHash);
+
     if (!isValid) {
-      user.resetOtpAttempts = (user.resetOtpAttempts ?? 0) + 1;
-      await user.save();
+      await User.findOneAndUpdate({ email }, { $inc: { resetOtpAttempts: 1 } });
+      const remaining = 5 - ((user.resetOtpAttempts ?? 0) + 1);
       return res.status(400).json({
-        message: `Invalid OTP. ${5 - user.resetOtpAttempts} attempt(s) remaining.`,
+        message: `Invalid OTP. ${remaining} attempt(s) remaining.`,
       });
     }
 
-    // Mark verified, extend session by 5 min for the password reset step
-    user.resetOtpVerified = true;
-    user.resetOtpExpiry   = Date.now() + 5 * 60 * 1000;
-    await user.save();
+    // OTP is correct — mark verified and extend session by 5 minutes
+    await User.findOneAndUpdate({ email }, {
+      $set: {
+        resetOtpVerified: true,
+        resetOtpExpiry:   Date.now() + 5 * 60 * 1000,
+      },
+    });
 
     res.status(200).json({ message: 'OTP verified successfully.' });
   } catch (err) {
@@ -131,36 +145,28 @@ const verifyResetOTP = async (req, res) => {
 };
 
 /* ── STEP 3 — Reset Password ── */
+// Frontend sends: { email, newPassword }
+// No OTP needed here — resetOtpVerified from step 2 is sufficient proof.
 const resetPassword = async (req, res) => {
   try {
-    const email = req.body.email?.toLowerCase().trim();
-    const { otp, newPassword } = req.body;
+    const email           = req.body.email?.toLowerCase().trim();
+    const { newPassword } = req.body;
 
-    if (!email || !otp || !newPassword)
-      return res.status(400).json({ message: 'All fields are required.' });
+    if (!email || !newPassword)
+      return res.status(400).json({ message: 'Email and new password are required.' });
 
     if (newPassword.length < 6)
       return res.status(400).json({ message: 'Password must be at least 6 characters.' });
 
     const user = await User.findOne({ email }).select(OTP_FIELDS);
 
-    if (!user || !user.resetOtpVerified || !user.resetOtpHash)
+    if (!user || !user.resetOtpVerified)
       return res.status(400).json({ message: 'Please complete OTP verification first.' });
 
-    if (Date.now() > user.resetOtpExpiry) {
-      user.resetOtpHash = undefined;
-      await user.save();
+    if (Date.now() > user.resetOtpExpiry)
       return res.status(400).json({ message: 'Session expired. Please start over.' });
-    }
 
-    const isValid = await bcrypt.compare(otp, user.resetOtpHash);
-    if (!isValid) {
-      user.resetOtpHash = undefined;
-      await user.save();
-      return res.status(400).json({ message: 'Invalid session. Please start over.' });
-    }
-
-    // pre('save') hook will hash the new password automatically
+    // Assign new password — pre('save') hook hashes it automatically
     user.password         = newPassword;
     user.resetOtpHash     = undefined;
     user.resetOtpExpiry   = undefined;

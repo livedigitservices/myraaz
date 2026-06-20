@@ -54,11 +54,16 @@ const userSchema = new mongoose.Schema(
     flaggedCount:   { type: Number,  default: 0 },
     isFraudSuspect: { type: Boolean, default: false },
 
-    // ── Password-reset OTP (persisted in DB so it survives serverless cold starts) ──
+    // ── Password-reset OTP ──
     resetOtpHash:     { type: String,  select: false },
     resetOtpExpiry:   { type: Number,  select: false },
     resetOtpAttempts: { type: Number,  default: 0, select: false },
     resetOtpVerified: { type: Boolean, default: false, select: false },
+
+    // ── Phone login OTP (persisted in DB — survives serverless cold starts) ──
+    phoneOtp:        { type: String,  select: false },
+    phoneOtpExpiry:  { type: Number,  select: false },
+    phoneOtpAttempts:{ type: Number,  default: 0, select: false },
   },
   { timestamps: true }
 );

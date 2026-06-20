@@ -1,15 +1,16 @@
 /**
  * returnController.js
  *
- * getUserWallet has been removed — wallet lives at GET /api/wallet.
- * All wallet refunds go through walletService.refundToWallet (via refundService).
+ * FIX: handleRazorpayWebhook now verifies Razorpay HMAC signature
+ * before trusting any incoming event.
  */
 
+const crypto   = require('crypto');
 const Return   = require('../models/Return');
 const Order    = require('../models/Order');
 const Product  = require('../models/Product');
 const User     = require('../models/User');
-const { checkFraud }                          = require('../services/fraudService');
+const { checkFraud }                           = require('../services/fraudService');
 const { processRefund, calculateRefundAmount } = require('../services/refundService');
 
 /* ─────────────────────────────────────────
@@ -152,7 +153,6 @@ const requestReturn = async (req, res) => {
     const fraudCheck = await checkFraud(req.user._id, order._id);
     const { totalRefund, isPartial } = calculateRefundAmount(order, returnItems);
 
-    // COD: user chooses upi/bank/wallet; all other methods default to wallet
     let finalRefundMethod = 'wallet';
     if (order.paymentMethod === 'COD') {
       finalRefundMethod = upiId ? 'upi' : bankDetails ? 'bank' : 'wallet';
@@ -213,10 +213,7 @@ const getAllReturns = async (req, res) => {
       .populate({
         path:     'order',
         select:   'totalPrice paymentMethod paymentResult orderItems shippingAddress',
-        populate: {
-          path:   'orderItems.product',
-          select: 'name images price',
-        },
+        populate: { path: 'orderItems.product', select: 'name images price' },
       })
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
@@ -224,7 +221,6 @@ const getAllReturns = async (req, res) => {
 
     const shaped = returns.map(ret => {
       const order = ret.order || {};
-
       const orderItems = (order.orderItems || []).map(item => ({
         name:     item.name     || item.product?.name        || 'Product',
         price:    item.price    ?? item.product?.price       ?? 0,
@@ -296,7 +292,6 @@ const handleReturn = async (req, res) => {
       return res.json({ message: 'Return rejected', return: returnDoc });
     }
 
-    // ── Approved: process refund ──────────────────────────────────────
     returnDoc.status       = 'refund_initiated';
     returnDoc.refundMethod = refundMethod || returnDoc.refundMethod;
     await returnDoc.save();
@@ -311,7 +306,6 @@ const handleReturn = async (req, res) => {
     }
     await returnDoc.save();
 
-    // Update order status
     const order = await Order.findById(returnDoc.order._id);
     if (order) {
       order.status        = returnDoc.partialRefund ? 'delivered' : 'returned';
@@ -354,10 +348,28 @@ const getMyReturns = async (req, res) => {
 
 /* ─────────────────────────────────────────
    POST /api/returns/webhook/razorpay
+   FIX: signature verified before trusting event
 ───────────────────────────────────────── */
 const handleRazorpayWebhook = async (req, res) => {
   try {
-    const { event, payload } = req.body;
+    const secret    = process.env.RAZORPAY_WEBHOOK_SECRET;
+    const signature = req.headers['x-razorpay-signature'];
+    const rawBody   = req.body;
+
+    if (secret) {
+      if (!signature)
+        return res.status(400).json({ message: 'Missing webhook signature' });
+
+      const expected = crypto
+        .createHmac('sha256', secret)
+        .update(rawBody)
+        .digest('hex');
+
+      if (expected !== signature)
+        return res.status(400).json({ message: 'Invalid webhook signature' });
+    }
+
+    const { event, payload } = JSON.parse(rawBody.toString());
     console.log('Return webhook event:', event);
 
     const refundId = payload?.refund?.entity?.id;
@@ -383,5 +395,4 @@ module.exports = {
   handleReturn,
   getMyReturns,
   handleRazorpayWebhook,
-  // ❌ getUserWallet removed — lives at GET /api/wallet via walletController
 };

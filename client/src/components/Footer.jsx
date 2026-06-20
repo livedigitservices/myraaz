@@ -18,9 +18,8 @@ const SHOP_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-  { label: 'Instagram', href: 'https://instagram.com/tharuntharun20', Icon: FiInstagram },
-  { label: 'Twitter',   href: 'https://twitter.com/myraaz',           Icon: FiTwitter  },
-  { label: 'Facebook',  href: 'https://facebook.com/myraaz',          Icon: FiFacebook },
+  { label: 'Instagram', href: 'https://instagram.com/', Icon: FiInstagram },
+  { label: 'Facebook',  href: 'https://facebook.com/',          Icon: FiFacebook },
   { label: 'Gmail',     href: 'mailto:myraazofficial@gmail.com',      Icon: FiMail     },
 ];
 

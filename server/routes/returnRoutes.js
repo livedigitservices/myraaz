@@ -10,20 +10,18 @@ const {
   handleRazorpayWebhook,
 } = require('../controllers/returnController');
 
-// ❌ getUserWallet removed from here — wallet lives at GET /api/wallet
-
 /* ── Webhook — no auth ── */
-router.post('/webhook/razorpay',              handleRazorpayWebhook);
+router.post('/webhook/razorpay', handleRazorpayWebhook);
 
 /* ── Admin ── */
-router.get('/admin',                protect, admin, getAllReturns);
-router.put('/admin/:returnId',      protect, admin, handleReturn);
+router.get('/admin',            protect, admin, getAllReturns);
+router.put('/admin/:returnId',  protect, admin, handleReturn);
 
 /* ── User — static paths before /:orderId ── */
 router.get('/my',                   protect, getMyReturns);
 router.get('/eligibility/:orderId', protect, checkEligibility);
 
 /* ── Param route last ── */
-router.post('/:orderId',            protect, requestReturn);
+router.post('/:orderId', protect, requestReturn);
 
 module.exports = router;
