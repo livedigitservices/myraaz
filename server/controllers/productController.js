@@ -80,16 +80,43 @@ const createProduct = async (req, res) => {
       description: req.body.returnDescription   || '',
     };
 
+    // comboPrices — sent as JSON string from multipart forms
+    let comboPrices = [];
+    if (req.body.comboPrices) {
+      try { comboPrices = JSON.parse(req.body.comboPrices); } catch { /* ignore malformed */ }
+    }
+    comboPrices = comboPrices
+      .filter(t => t.quantity >= 2 && t.price >= 0)
+      .map(t => ({ quantity: Number(t.quantity), price: Number(t.price), label: t.label || '' }));
+
+    // variants — sent as JSON string
+    let variants = [];
+    if (req.body.variants) {
+      try { variants = JSON.parse(req.body.variants); } catch { /* ignore */ }
+    }
+    variants = variants
+      .filter(v => v.value > 0 && v.price >= 0)
+      .map(v => ({
+        value: Number(v.value),
+        unit:  v.unit === 'L' ? 'L' : 'ml',
+        label: v.label || '',
+        price: Number(v.price),
+        stock: Number(v.stock) || 0,
+        sku:   v.sku || '',
+      }));
+
     const product = await Product.create({
       name:     name.trim(),
       description: description.trim(),
       brand:    brand.trim(),
-      price:    Number(price),
+      price:    variants.length ? Number(variants[0].price) : Number(price),
       category,
-      stock:    Number(stock) || 0,
+      stock:    variants.length ? variants.reduce((s,v) => s + v.stock, 0) : (Number(stock) || 0),
       images,
       image:    images[0],
       returnPolicy,
+      comboPrices,
+      variants,
     });
 
     res.status(201).json(product);
@@ -150,6 +177,34 @@ const updateProduct = async (req, res) => {
         returnDays:  Number(req.body.returnDays) || 7,
         description: req.body.returnDescription  || '',
       };
+    }
+
+    if (req.body.comboPrices !== undefined) {
+      let tiers = [];
+      try { tiers = JSON.parse(req.body.comboPrices); } catch { /* ignore */ }
+      product.comboPrices = tiers
+        .filter(t => t.quantity >= 2 && t.price >= 0)
+        .map(t => ({ quantity: Number(t.quantity), price: Number(t.price), label: t.label || '' }));
+    }
+
+    if (req.body.variants !== undefined) {
+      let vArr = [];
+      try { vArr = JSON.parse(req.body.variants); } catch { /* ignore */ }
+      product.variants = vArr
+        .filter(v => v.value > 0 && v.price >= 0)
+        .map(v => ({
+          value: Number(v.value),
+          unit:  v.unit === 'L' ? 'L' : 'ml',
+          label: v.label || '',
+          price: Number(v.price),
+          stock: Number(v.stock) || 0,
+          sku:   v.sku || '',
+        }));
+      // If variants provided, sync top-level price/stock
+      if (product.variants.length) {
+        product.price = product.variants[0].price;
+        product.stock = product.variants.reduce((s, v) => s + v.stock, 0);
+      }
     }
 
     await product.save();

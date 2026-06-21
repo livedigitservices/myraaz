@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   FiShoppingCart, FiTrash2, FiMinus, FiPlus,
@@ -82,10 +82,17 @@ const CartItem = ({ item, onUpdate, onRemove }) => {
 
         {/* Price + Qty */}
         <div className="flex items-center justify-between mt-3">
-          <span className="text-base font-semibold"
-                style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-primary)' }}>
-            ₹{(item.price * item.quantity).toLocaleString('en-IN')}
-          </span>
+          <div>
+            <span className="text-base font-semibold"
+                  style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-primary)' }}>
+              ₹{((item.effectivePrice ?? item.price) * item.quantity).toLocaleString('en-IN')}
+            </span>
+            {item.effectivePrice && item.effectivePrice < item.price && (
+              <p className="text-xs text-green-600 font-medium mt-0.5">
+                Combo deal · ₹{item.effectivePrice}/unit
+              </p>
+            )}
+          </div>
 
           {/* Qty stepper */}
           <div className="flex items-center rounded-full overflow-hidden"
@@ -109,7 +116,9 @@ const CartItem = ({ item, onUpdate, onRemove }) => {
 
         {/* Unit price */}
         <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
-          ₹{item.price} per unit
+          {item.effectivePrice && item.effectivePrice < item.price
+            ? <><s>₹{item.price}</s> → ₹{item.effectivePrice} per unit</>
+            : `₹${item.price} per unit`}
         </p>
       </div>
     </div>
@@ -124,9 +133,39 @@ export default function Cart() {
   const { userInfo } = useAuth();
   const navigate     = useNavigate();
 
-  const [promoInput, setPromoInput]   = useState('');
+  const [promoInput, setPromoInput]     = useState('');
   const [appliedPromo, setAppliedPromo] = useState(null);
-  const [promoError, setPromoError]   = useState('');
+  const [promoError, setPromoError]     = useState('');
+  const [deliveryInfo, setDeliveryInfo] = useState({ charge: 60, label: 'Standard delivery', freeAbove: 999 });
+  const [comboOffers, setComboOffers]   = useState([]); // [{ offer, savings, finalPrice }]
+  const comboSavings = comboOffers.reduce((s, o) => s + o.savings, 0);
+
+  /* Fetch dynamic delivery charge whenever subtotal changes */
+  useEffect(() => {
+    let cancelled = false;
+    import('../services/deliveryService').then(({ fetchDeliveryCharge }) => {
+      fetchDeliveryCharge(totalPrice).then(info => {
+        if (!cancelled) setDeliveryInfo(info);
+      });
+    });
+    return () => { cancelled = true; };
+  }, [totalPrice]);
+
+  /* Check applicable cross-product combo offers */
+  useEffect(() => {
+    if (!cartItems.length) { setComboOffers([]); return; }
+    let cancelled = false;
+    const cartPayload = cartItems.map(i => ({
+      productId:    i._id,
+      variantLabel: i.selectedVariantLabel || '',
+      quantity:     i.quantity,
+      price:        i.effectivePrice ?? i.price,
+    }));
+    api.post('/combo-offers/apply', { cartItems: cartPayload })
+      .then(({ data }) => { if (!cancelled) setComboOffers(data.appliedOffers || []); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [cartItems]);
 
   /* Promo logic */
   const applyPromo = async () => {
@@ -165,14 +204,15 @@ export default function Cart() {
   };
 
   /* Price breakdown */
-  const shipping       = totalPrice >= 999 ? 0 : 60;
+  const shipping       = deliveryInfo.charge;
   const discountAmount = appliedPromo
     ? appliedPromo.type === 'percent'
       ? Math.round(totalPrice * appliedPromo.value / 100)
       : appliedPromo.value
     : 0;
-  const finalTotal = totalPrice - discountAmount + shipping;
-  const savings    = discountAmount + (totalPrice >= 999 ? 60 : 0);
+  const totalDiscount = discountAmount + comboSavings;
+  const finalTotal    = totalPrice - totalDiscount + shipping;
+  const savings       = totalDiscount + (shipping === 0 ? 60 : 0);
 
   /* Checkout */
   const handleCheckout = () => {
@@ -181,7 +221,7 @@ export default function Cart() {
       navigate('/login');
       return;
     }
-    navigate('/checkout', { state: { appliedPromo, discountAmount, shipping, finalTotal } });
+    navigate('/checkout', { state: { appliedPromo, discountAmount: totalDiscount, shipping, finalTotal } });
   };
 
   /* ── Empty state ── */
@@ -297,7 +337,7 @@ export default function Cart() {
             {/* Perks */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { icon: <FiTruck size={16} />,   text: 'Free shipping', sub: 'on orders ₹999+' },
+                { icon: <FiTruck size={16} />,   text: 'Free shipping', sub: `on orders ₹${deliveryInfo.freeAbove}+` },
                 { icon: <FiShield size={16} />,  text: '100% authentic', sub: 'guaranteed'      },
                 { icon: <FiTag size={16} />,     text: 'Best price',    sub: 'always'           },
               ].map(({ icon, text, sub }) => (
@@ -337,7 +377,7 @@ export default function Cart() {
                     </p>
                     <p className="text-xs font-medium shrink-0"
                        style={{ color: 'var(--color-dark)' }}>
-                      ₹{(item.price * item.quantity).toLocaleString('en-IN')}
+                      ₹{((item.effectivePrice ?? item.price) * item.quantity).toLocaleString('en-IN')}
                     </p>
                   </div>
                 ))}
@@ -375,6 +415,19 @@ export default function Cart() {
                   </div>
                 )}
 
+                {/* Combo offer savings */}
+                {comboOffers.map((co, i) => (
+                  <div key={i} className="flex justify-between text-sm">
+                    <span className="text-green-500 truncate mr-2">
+                      🎁 {co.offer.name}
+                      {co.offer.badge ? ` · ${co.offer.badge}` : ''}
+                    </span>
+                    <span className="text-green-500 font-medium shrink-0">
+                      − ₹{co.savings.toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                ))}
+
                 {savings > 0 && (
                   <div className="p-2.5 rounded-xl text-xs font-medium text-center"
                        style={{ backgroundColor: '#f0fdf4', color: '#22c55e' }}>
@@ -405,13 +458,13 @@ export default function Cart() {
               </button>
 
               {/* Free shipping nudge */}
-              {totalPrice < 999 && (
+              {shipping > 0 && totalPrice < deliveryInfo.freeAbove && (
                 <div className="mt-4 p-3 rounded-xl text-center"
                      style={{ backgroundColor: 'var(--color-soft)' }}>
                   <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
                     Add{' '}
                     <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>
-                      ₹{(999 - totalPrice).toLocaleString('en-IN')}
+                      ₹{(deliveryInfo.freeAbove - totalPrice).toLocaleString('en-IN')}
                     </span>
                     {' '}more for free shipping 🚚
                   </p>
@@ -420,7 +473,7 @@ export default function Cart() {
                        style={{ backgroundColor: 'var(--color-secondary)' }}>
                     <div className="h-full rounded-full transition-all duration-500"
                          style={{
-                           width: `${Math.min((totalPrice / 499) * 100, 100)}%`,
+                           width: `${Math.min((totalPrice / deliveryInfo.freeAbove) * 100, 100)}%`,
                            backgroundColor: 'var(--color-primary)'
                          }} />
                   </div>

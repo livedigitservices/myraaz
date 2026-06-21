@@ -30,6 +30,8 @@ import AdminUsers     from './pages/admin/AdminUsers';
 import AdminCoupons   from './pages/admin/AdminCoupons';
 import AdminReturns   from './pages/admin/AdminReturns';
 import AdminHomeMedia from './pages/admin/AdminHomeMedia';
+import AdminDelivery    from './pages/admin/AdminDelivery';
+import AdminComboOffers from './pages/admin/AdminComboOffers';
 import AboutPage        from './pages/Aboutpage';
 import ContactPage      from './pages/Contactpage';
 import ShippingPolicyPage from './pages/Shippingpolicypage';
@@ -79,6 +81,8 @@ function AppLayout() {
           <Route path="/admin/coupons"            element={<AdminRoute><AdminCoupons /></AdminRoute>} />
           <Route path="/admin/returns"            element={<AdminRoute><AdminReturns /></AdminRoute>} />
           <Route path="/admin/home-media"         element={<AdminRoute><AdminHomeMedia /></AdminRoute>} />
+          <Route path="/admin/delivery"           element={<AdminRoute><AdminDelivery /></AdminRoute>} />
+          <Route path="/admin/combo-offers"       element={<AdminRoute><AdminComboOffers /></AdminRoute>} />
 
           <Route path="/about"           element={<AboutPage />} />
           <Route path="/contact"         element={<ContactPage />} />

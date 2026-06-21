@@ -8,6 +8,7 @@ import {
 import { toast } from 'react-toastify';
 import api from '../services/api';
 import { useCart } from '../context/CartContext';
+import { resolveComboPrice } from '../services/deliveryService';
 import { useWishlist } from '../context/WishlistContext';
 import { useAuth } from '../context/AuthContext';
 
@@ -85,6 +86,7 @@ export default function ProductDetail() {
   const [added, setAdded]         = useState(false);
   const [activeImage, setActiveImage] = useState(0);
   const [activeTab, setActiveTab] = useState('description');
+  const [selectedVariant, setSelectedVariant] = useState(null); // chosen size variant
 
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -96,6 +98,8 @@ export default function ProductDetail() {
         const { data } = await api.get(`/products/${id}`);
         setProduct(data);
         setActiveImage(0);
+        // Default to smallest (first) variant if variants exist
+        if (data.variants?.length) setSelectedVariant(data.variants[0]);
         const rel = await api.get(`/products?category=${data.category}&limit=4`);
         setRelated(rel.data.products.filter(p => p._id !== id));
       } catch {
@@ -110,7 +114,11 @@ export default function ProductDetail() {
   }, [id]);
 
   const handleAddToCart = () => {
-    addToCart(product, quantity);
+    const productWithVariant = selectedVariant
+      ? { ...product, price: selectedVariant.price, stock: selectedVariant.stock,
+          selectedVariantLabel: selectedVariant.label, effectivePrice: selectedVariant.price }
+      : product;
+    addToCart(productWithVariant, quantity);
     setAdded(true);
     toast.success('Added to cart 🛒');
     setTimeout(() => setAdded(false), 2000);
@@ -148,7 +156,8 @@ export default function ProductDetail() {
   if (loading) return <Skeleton />;
   if (!product) return null;
 
-  const inStock         = product.stock > 0;
+  const activeStock = selectedVariant ? selectedVariant.stock : product.stock;
+  const inStock     = activeStock > 0;
   const ratingBreakdown = [5,4,3,2,1].map(star => ({
     star,
     count: product.reviews?.filter(r => Math.round(r.rating) === star).length || 0,
@@ -325,27 +334,70 @@ export default function ProductDetail() {
 
             {/* Price */}
             <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-semibold"
-                    style={{ fontFamily: 'var(--font-serif)',
-                             color: 'var(--color-primary)' }}>
-                ₹{product.price}
-              </span>
-              <span className="text-sm line-through"
-                    style={{ color: 'var(--color-muted)' }}>
-                ₹{Math.round(product.price * 1.2)}
-              </span>
-              <span className="text-xs font-medium px-2 py-1 rounded-full
-                               bg-green-100 text-green-600">
-                20% off
-              </span>
+              {(() => {
+                const effectivePrice = resolveComboPrice(product.price, product.comboPrices, quantity);
+                return (
+                  <>
+                    <span className="text-4xl font-semibold"
+                          style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-primary)' }}>
+                      ₹{effectivePrice}
+                    </span>
+                    <span className="text-sm line-through" style={{ color: 'var(--color-muted)' }}>
+                      ₹{Math.round(product.price * 1.2)}
+                    </span>
+                    {effectivePrice < product.price
+                      ? <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-600">
+                          Combo price!
+                        </span>
+                      : <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-600">
+                          20% off
+                        </span>
+                    }
+                  </>
+                );
+              })()}
             </div>
+
+            {/* Combo pricing tiers */}
+            {product.comboPrices?.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-widest"
+                   style={{ color: 'var(--color-muted)' }}>Combo deals</p>
+                <div className="flex flex-wrap gap-2">
+                  {product.comboPrices.map((tier, i) => {
+                    const active = quantity >= tier.quantity;
+                    return (
+                      <div key={i}
+                           className="px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
+                           style={{
+                             borderColor: active ? 'var(--color-primary)' : 'var(--color-soft)',
+                             backgroundColor: active ? 'var(--color-soft)' : 'white',
+                             color: active ? 'var(--color-primary)' : 'var(--color-muted)',
+                           }}>
+                        {tier.label || `Buy ${tier.quantity}+`} → ₹{tier.price}/unit
+                        {active && <span className="ml-1">✓</span>}
+                      </div>
+                    );
+                  })}
+                </div>
+                {(() => {
+                  const next = product.comboPrices.find(t => quantity < t.quantity);
+                  if (!next) return null;
+                  return (
+                    <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
+                      Add {next.quantity - quantity} more to unlock ₹{next.price}/unit
+                    </p>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* Stock */}
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${inStock ? 'bg-green-500' : 'bg-red-400'}`} />
               <span className="text-sm font-medium"
                     style={{ color: inStock ? '#22c55e' : '#ef4444' }}>
-                {inStock ? `In Stock (${product.stock} left)` : 'Out of Stock'}
+                {inStock ? `In Stock (${activeStock} left)` : 'Out of Stock'}
               </span>
             </div>
 
@@ -359,6 +411,51 @@ export default function ProductDetail() {
             </p>
 
             <div className="h-px" style={{ backgroundColor: 'var(--color-soft)' }} />
+
+            {/* Size / Volume variant picker */}
+            {product.variants?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-widest mb-3"
+                   style={{ color: 'var(--color-muted)' }}>
+                  Size
+                  {selectedVariant && (
+                    <span className="ml-2 normal-case font-normal"
+                          style={{ color: 'var(--color-primary)' }}>
+                      — {selectedVariant.label}
+                    </span>
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {product.variants.map((v, i) => {
+                    const active = selectedVariant?.label === v.label;
+                    const outOfStock = v.stock === 0;
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        disabled={outOfStock}
+                        onClick={() => { setSelectedVariant(v); setQuantity(1); }}
+                        className="px-4 py-2 rounded-full text-sm font-medium border transition-all"
+                        style={{
+                          borderColor:     active ? 'var(--color-primary)' : 'var(--color-soft)',
+                          backgroundColor: active ? 'var(--color-soft)'    : 'white',
+                          color:           outOfStock ? 'var(--color-muted)'
+                                         : active    ? 'var(--color-primary)'
+                                         : 'var(--color-dark)',
+                          opacity:         outOfStock ? 0.5 : 1,
+                          textDecoration:  outOfStock ? 'line-through' : 'none',
+                        }}
+                      >
+                        {v.label}
+                        <span className="ml-1.5 text-xs" style={{ color: active ? 'var(--color-primary)' : 'var(--color-muted)' }}>
+                          ₹{v.price}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Quantity */}
             <div>
@@ -378,7 +475,7 @@ export default function ProductDetail() {
                     {quantity}
                   </span>
                   <button onClick={() => setQuantity(q =>
-                    Math.min(product.stock, q + 1))}
+                    Math.min(activeStock, q + 1))}
                     className="w-10 h-10 flex items-center justify-center transition-colors"
                     style={{ color: 'var(--color-dark)' }}>
                     <FiPlus size={14} />

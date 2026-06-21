@@ -28,6 +28,18 @@ export default function EditProduct() {
     category: '', brand: '', stock: '', image: null,
   });
 
+  const [comboPrices, setComboPrices] = useState([]);
+  const addComboTier    = () => setComboPrices(t => [...t, { quantity: 2, price: '', label: '', _key: Math.random() }]);
+  const removeComboTier = (key) => setComboPrices(t => t.filter(x => x._key !== key));
+  const updateComboTier = (key, field, value) =>
+    setComboPrices(t => t.map(x => x._key === key ? { ...x, [field]: value } : x));
+
+  const [variants, setVariants] = useState([]);
+  const addVariant    = () => setVariants(v => [...v, { value: '', unit: 'ml', price: '', stock: '', sku: '', _key: Math.random() }]);
+  const removeVariant = (key) => setVariants(v => v.filter(x => x._key !== key));
+  const updateVariant = (key, field, value) =>
+    setVariants(v => v.map(x => x._key === key ? { ...x, [field]: value } : x));
+
   const categories = [
     { value: 'hair-oil',    label: '🌿 Hair Oil'    },
     { value: 'shampoo',     label: '🧴 Shampoo'     },
@@ -52,6 +64,8 @@ export default function EditProduct() {
   returnDays:        String(data.returnPolicy?.returnDays ?? 7),
   returnDescription: data.returnPolicy?.description ?? '',
 });
+        setComboPrices((data.comboPrices || []).map(t => ({ ...t, _key: Math.random() })));
+        setVariants((data.variants || []).map(v => ({ ...v, _key: Math.random() })));
         setPreview(data.image);
       } catch {
         toast.error('Failed to load product');
@@ -86,6 +100,16 @@ export default function EditProduct() {
     /* Return policy */
     fd.append('returnable',        String(form.returnable));
     fd.append('returnDays',        form.returnDays || '7');
+
+    const tiers = comboPrices
+      .filter(t => t.quantity >= 2 && t.price !== '' && Number(t.price) >= 0)
+      .map(t => ({ quantity: Number(t.quantity), price: Number(t.price), label: t.label }));
+    fd.append('comboPrices', JSON.stringify(tiers));
+
+    const variantData = variants
+      .filter(v => v.value > 0 && v.price !== '' && Number(v.price) >= 0)
+      .map(v => ({ value: Number(v.value), unit: v.unit, price: Number(v.price), stock: Number(v.stock) || 0, sku: v.sku || '' }));
+    fd.append('variants', JSON.stringify(variantData));
     fd.append('returnDescription', form.returnDescription || '');
 
     if (form.image) fd.append('images', form.image);
@@ -306,6 +330,115 @@ export default function EditProduct() {
   )}
 </div>
 
+          </div>
+
+          {/* Volume / Size Variants */}
+          <div className="bg-white rounded-2xl p-5 space-y-4" style={{ boxShadow: 'var(--shadow-card)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-widest"
+                    style={{ color: 'var(--color-muted)' }}>Volume / Size Variants</h2>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                  100ml, 200ml, 1L etc. Each size has its own price and stock.
+                </p>
+              </div>
+              <button type="button" onClick={addVariant}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-white shrink-0"
+                      style={{ backgroundColor: 'var(--color-primary)' }}>
+                + Add size
+              </button>
+            </div>
+            {variants.length === 0 && (
+              <p className="text-xs py-2 text-center" style={{ color: 'var(--color-muted)' }}>
+                No sizes added — single-size product.
+              </p>
+            )}
+            <div className="space-y-3">
+              {variants.map((v) => (
+                <div key={v._key} className="grid grid-cols-5 gap-2 p-3 rounded-xl items-end"
+                     style={{ border: '1.5px solid var(--color-soft)' }}>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-dark)' }}>Size</label>
+                    <div className="flex gap-1.5">
+                      <input type="number" min="1" className="input flex-1 text-sm" placeholder="100"
+                             value={v.value} onChange={e => updateVariant(v._key, 'value', e.target.value)}/>
+                      <select className="input text-sm w-16" value={v.unit}
+                              onChange={e => updateVariant(v._key, 'unit', e.target.value)}>
+                        <option value="ml">ml</option>
+                        <option value="L">L</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-dark)' }}>Price (₹)</label>
+                    <input type="number" min="0" className="input w-full text-sm" placeholder="299"
+                           value={v.price} onChange={e => updateVariant(v._key, 'price', e.target.value)}/>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-dark)' }}>Stock</label>
+                    <input type="number" min="0" className="input w-full text-sm" placeholder="50"
+                           value={v.stock} onChange={e => updateVariant(v._key, 'stock', e.target.value)}/>
+                  </div>
+                  <div className="flex items-end justify-end pb-0.5">
+                    <button type="button" onClick={() => removeVariant(v._key)}
+                            className="p-2 rounded-xl hover:bg-red-50 transition-colors">
+                      <span style={{ color: '#f87171', fontSize: 14 }}>✕</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Combo / Bulk Pricing */}
+          <div className="bg-white rounded-2xl p-5 space-y-4" style={{ boxShadow: 'var(--shadow-card)' }}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xs font-semibold uppercase tracking-widest"
+                    style={{ color: 'var(--color-muted)' }}>Combo / Bulk Pricing</h2>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
+                  Set lower unit prices when customers buy more.
+                </p>
+              </div>
+              <button type="button" onClick={addComboTier}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium text-white"
+                      style={{ backgroundColor: 'var(--color-primary)' }}>
+                + Add tier
+              </button>
+            </div>
+            {comboPrices.length === 0 && (
+              <p className="text-xs py-2 text-center" style={{ color: 'var(--color-muted)' }}>
+                No combo tiers — single unit price applies.
+              </p>
+            )}
+            <div className="space-y-3">
+              {comboPrices.map((tier) => (
+                <div key={tier._key} className="grid grid-cols-3 gap-3 p-3 rounded-xl items-end"
+                     style={{ border: '1.5px solid var(--color-soft)' }}>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-dark)' }}>Min qty</label>
+                    <input type="number" min="2" className="input w-full text-sm"
+                           value={tier.quantity} onChange={e => updateComboTier(tier._key, 'quantity', e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-dark)' }}>Price/unit (₹)</label>
+                    <input type="number" min="0" className="input w-full text-sm" placeholder="e.g. 450"
+                           value={tier.price} onChange={e => updateComboTier(tier._key, 'price', e.target.value)} />
+                  </div>
+                  <div className="flex gap-2 items-end">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium mb-1" style={{ color: 'var(--color-dark)' }}>Label</label>
+                      <input type="text" className="input w-full text-sm" placeholder="Buy 2, save ₹100"
+                             value={tier.label} onChange={e => updateComboTier(tier._key, 'label', e.target.value)} />
+                    </div>
+                    <button type="button" onClick={() => removeComboTier(tier._key)}
+                            className="p-2 rounded-xl hover:bg-red-50 shrink-0 mb-0.5">
+                      <span style={{ color: '#f87171', fontSize: 14 }}>✕</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="flex items-center gap-3 pb-10">

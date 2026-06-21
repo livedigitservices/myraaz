@@ -62,6 +62,8 @@ app.use('/api/returns',       require('./routes/returnRoutes'));
 app.use('/api/wallet',        require('./routes/walletRoutes'));
 app.use('/api/home-media',    require('./routes/homeMediaRoutes'));
 app.use('/api/home-featured', require('./routes/homeFeaturedRoutes'));
+app.use('/api/delivery',      require('./routes/deliveryRoutes'));
+app.use('/api/combo-offers',  require('./routes/comboOfferRoutes'));
 
 app.get('/', (req, res) => res.send('myRaaz API is running 🌿'));
 

@@ -230,7 +230,17 @@ export default function Checkout() {
   const { userInfo }                         = useAuth();
   const { cartItems, totalPrice, clearCart } = useCart();
 
-  const { discountAmount = 0, shipping = 0, finalTotal } = location.state || {};
+  const { discountAmount = 0, finalTotal } = location.state || {};
+
+  const [deliveryCharge, setDeliveryCharge] = useState(location.state?.shipping ?? 60);
+
+  useEffect(() => {
+    import('../services/deliveryService').then(({ fetchDeliveryCharge }) => {
+      fetchDeliveryCharge(totalPrice).then(info => setDeliveryCharge(info.charge));
+    });
+  }, [totalPrice]);
+
+  const shipping   = deliveryCharge;
   const grandTotal = finalTotal ?? (totalPrice + shipping - discountAmount);
 
   const [step, setStep]               = useState(0);
@@ -268,7 +278,7 @@ export default function Checkout() {
       product:  i._id,
       name:     i.name,
       image:    i.image || i.images?.[0] || '',
-      price:    i.price,
+      price:    i.effectivePrice ?? i.price,
       quantity: i.quantity,
     })),
     shippingAddress: {

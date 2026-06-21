@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
   FiGrid, FiBox, FiShoppingCart, FiUsers,
-  FiTag, FiPackage, FiHome, FiEye, FiMoreHorizontal,
+  FiTag, FiPackage, FiHome, FiEye, FiMoreHorizontal, FiTruck, FiGift,
 } from 'react-icons/fi';
 
 const MAIN_LINKS = [
@@ -13,10 +13,12 @@ const MAIN_LINKS = [
 ];
 
 const MORE_LINKS = [
-  { to: '/admin/coupons',    icon: FiTag,     label: 'Coupons'    },
-  { to: '/admin/returns',    icon: FiPackage, label: 'Returns'    },
-  { to: '/admin/home-media', icon: FiHome,    label: 'Home Media' },
-  { to: '/',                 icon: FiEye,     label: 'View Store' },
+  { to: '/admin/coupons',      icon: FiTag,     label: 'Coupons'       },
+  { to: '/admin/returns',      icon: FiPackage, label: 'Returns'       },
+  { to: '/admin/home-media',   icon: FiHome,    label: 'Home Media'    },
+  { to: '/admin/delivery',     icon: FiTruck,   label: 'Delivery'      },
+  { to: '/admin/combo-offers', icon: FiGift,    label: 'Combo Offers'  },
+  { to: '/',                   icon: FiEye,     label: 'View Store'    },
 ];
 
 export default function AdminMobileBottomNav() {
