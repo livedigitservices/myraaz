@@ -87,6 +87,7 @@ export default function ProductDetail() {
   const [activeImage, setActiveImage] = useState(0);
   const [activeTab, setActiveTab] = useState('description');
   const [selectedVariant, setSelectedVariant] = useState(null); // chosen size variant
+  const [crossCombos, setCrossCombos]         = useState([]);   // active combo offers for this product
 
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -102,6 +103,16 @@ export default function ProductDetail() {
         if (data.variants?.length) setSelectedVariant(data.variants[0]);
         const rel = await api.get(`/products?category=${data.category}&limit=4`);
         setRelated(rel.data.products.filter(p => p._id !== id));
+
+        // Fetch cross-product combo offers that include this product
+        try {
+          const { data: offers } = await api.get('/combo-offers');
+          const mine = offers.filter(o =>
+            o.isActive &&
+            o.products.some(p => (p.product?._id || p.product) === id)
+          );
+          setCrossCombos(mine);
+        } catch { /* non-critical */ }
       } catch {
         toast.error('Product not found');
         navigate('/products');
@@ -486,6 +497,62 @@ export default function ProductDetail() {
                 </span>
               </div>
             </div>
+
+            {/* Cross-product combo offer banners */}
+            {crossCombos.length > 0 && (
+              <div className="space-y-2">
+                {crossCombos.map(offer => {
+                  const otherProducts = offer.products.filter(
+                    p => (p.product?._id || p.product) !== id
+                  );
+                  const discountLabel =
+                    offer.discountType === 'flat'    ? `Save ₹${offer.discountValue}`  :
+                    offer.discountType === 'percent' ? `${offer.discountValue}% off`    :
+                                                      `Bundle ₹${offer.discountValue}`;
+                  return (
+                    <div key={offer._id}
+                         className="flex items-start gap-3 p-3.5 rounded-2xl"
+                         style={{ backgroundColor: '#f0fdf4', border: '1.5px solid #bbf7d0' }}>
+                      <span className="text-lg shrink-0">🎁</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-semibold" style={{ color: '#15803d' }}>
+                            {offer.name}
+                          </p>
+                          <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-green-600 text-white">
+                            {offer.badge || discountLabel}
+                          </span>
+                        </div>
+                        {offer.description && (
+                          <p className="text-xs mt-0.5" style={{ color: '#166534' }}>
+                            {offer.description}
+                          </p>
+                        )}
+                        {otherProducts.length > 0 && (
+                          <div className="flex items-center gap-2 mt-2 flex-wrap">
+                            <span className="text-xs" style={{ color: '#166534' }}>Bundle with:</span>
+                            {otherProducts.map((p, i) => (
+                              <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white"
+                                   style={{ border: '1px solid #bbf7d0' }}>
+                                {p.product?.image && (
+                                  <img src={p.product.image} alt=""
+                                       className="w-5 h-5 rounded object-cover shrink-0" />
+                                )}
+                                <span className="text-xs font-medium truncate max-w-[120px]"
+                                      style={{ color: '#15803d' }}>
+                                  {p.product?.name || 'Product'}
+                                  {p.variantLabel && ` · ${p.variantLabel}`}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* CTA buttons */}
             <div className="flex items-center gap-3">
