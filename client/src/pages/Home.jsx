@@ -404,6 +404,7 @@ export default function Home() {
   const [bannerCoupon,  setBannerCoupon]  = useState(null);
   const [couponLoading, setCouponLoading] = useState(true);
   const [homeMedia,     setHomeMedia]     = useState([]);
+  const [freeAbove,     setFreeAbove]     = useState(999);
 
   useEffect(() => {
     api.get('/products?limit=8&sort=rating_desc')
@@ -419,15 +420,14 @@ export default function Home() {
     api.get('/home-media')
       .then(({ data }) => setHomeMedia(data))
       .catch(() => setHomeMedia([]));
+
+    // Fetch dynamic free-shipping threshold
+    api.get('/delivery/calculate?subtotal=0')
+      .then(({ data }) => { if (data.freeAbove) setFreeAbove(data.freeAbove); })
+      .catch(() => {});
   }, []);
 
-  // const categories = [
-  //   { name: 'Hair Oils',    slug: 'hair-oil',    emoji: '🌿', desc: 'Nourish & strengthen' },
-  //   { name: 'Shampoos',     slug: 'shampoo',     emoji: '🧴', desc: 'Cleanse & refresh'    },
-  //   { name: 'Conditioners', slug: 'conditioner', emoji: '✨', desc: 'Soften & detangle'    },
-  //   { name: 'Hair Masks',   slug: 'hair-mask',   emoji: '🍯', desc: 'Deep treat & repair'  },
-  //   { name: 'Serums',       slug: 'serum',       emoji: '💧', desc: 'Shine & smooth'       },
-  // ];
+
 
   const categoryIcons = {
   'hair-oil': (
@@ -477,10 +477,10 @@ const categories = [
 ];
 
   const perks = [
-    { icon: <FiTruck size={20} />,     title: 'Free Shipping', desc: 'On orders above ₹999'       },
-    { icon: <FiShield size={20} />,    title: '100% Natural',  desc: 'No harsh chemicals ever'    },
-    { icon: <FiRefreshCw size={20} />, title: 'Easy Returns',  desc: '7-day hassle-free returns'  },
-    { icon: <FiPhone size={20} />,     title: '24/7 Support',  desc: "We're always here for you"  },
+    { icon: <FiTruck size={20} />,     title: 'Free Shipping', desc: `On orders above ₹${freeAbove.toLocaleString('en-IN')}` },
+    { icon: <FiShield size={20} />,    title: '100% Natural',  desc: 'No harsh chemicals ever'                               },
+    { icon: <FiRefreshCw size={20} />, title: 'Easy Returns',  desc: '7-day hassle-free returns'                             },
+    { icon: <FiPhone size={20} />,     title: '24/7 Support',  desc: "We're always here for you"                             },
   ];
 
   return (
@@ -596,42 +596,6 @@ const categories = [
     ))}
   </div>
 </section>
-
-      {/* ── CATEGORIES ── */}
-      {/* <section className="max-w-6xl mx-auto px-4 py-16">
-        <div className="flex items-end justify-between mb-8 ">
-          <div>
-            <p className="text-xs font-medium mb-1 uppercase tracking-widest"
-               style={{ color: 'var(--color-accent)' }}>Browse by</p>
-            <h2 className="text-3xl font-semibold"
-                style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
-              Categories
-            </h2>
-          </div>
-          <Link to="/products" className="text-sm flex items-center gap-1 hover:gap-2 transition-all"
-                style={{ color: 'var(--color-primary)' }}>
-            View all <FiArrowRight size={14} />
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-          {categories.map(({ name, slug, emoji, desc }) => (
-            <Link key={slug} to={`/products?category=${slug}`}
-                  className="group flex flex-col items-center text-center p-5 rounded-2xl
-                              transition-all duration-300 hover:-translate-y-1"
-                   style={{
-    backgroundColor: 'var(--color-soft)',  
-    boxShadow: 'var(--shadow-card)',
-  }}>
-              <div className="text-3xl mb-3 transition-transform duration-300 group-hover:scale-110">
-                {emoji}
-              </div>
-              <p className="text-sm font-semibold mb-1" style={{ color: 'var(--color-dark)' }}>{name}</p>
-              <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{desc}</p>
-            </Link>
-          ))}
-        </div>
-      </section> */}
-
 
       <section className="max-w-6xl mx-auto px-4 py-16">
   <div className="flex items-end justify-between mb-8">

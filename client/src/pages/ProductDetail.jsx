@@ -202,81 +202,94 @@ export default function ProductDetail() {
           {/* LEFT — Images */}
           <div className="space-y-3">
 
-            {/* Main image */}
-            <div className="relative rounded-3xl overflow-hidden aspect-square group"
-                 style={{ backgroundColor: 'var(--color-soft)' }}>
-              <img
-                src={product.images?.[activeImage] || product.image}
-                alt={product.name}
-                className="w-full h-full object-cover transition-transform
-                           duration-700 group-hover:scale-105"
-              />
+            {/* Main image + vertical thumbnails */}
+            <div className="flex gap-3">
 
-              {/* Top left badges */}
-              <div className="absolute top-4 left-4 flex flex-col gap-2">
-                <span className="px-3 py-1.5 rounded-full text-xs font-medium
-                                 capitalize text-white"
-                      style={{ backgroundColor: 'var(--color-primary)' }}>
-                  {product.category}
-                </span>
-                {!inStock && (
-                  <span className="px-3 py-1.5 rounded-full text-xs font-medium
-                                   bg-red-500 text-white">
-                    Out of Stock
-                  </span>
-                )}
-              </div>
-
-              {/* Share button */}
-              <button onClick={handleShare}
-                className="absolute top-4 right-4 w-9 h-9 bg-white rounded-full
-                           flex items-center justify-center shadow-md
-                           hover:scale-110 transition-transform">
-                <FiShare2 size={15} style={{ color: 'var(--color-muted)' }} />
-              </button>
-
-              {/* Arrow navigation */}
+              {/* Vertical thumbnail strip — desktop only */}
               {product.images?.length > 1 && (
-                <>
-                  <button
-                    onClick={() => setActiveImage(i =>
-                      (i - 1 + product.images.length) % product.images.length
-                    )}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8
-                               bg-white/80 rounded-full flex items-center justify-center
-                               shadow-md hover:bg-white transition-all text-lg font-bold"
-                    style={{ color: 'var(--color-dark)' }}>
-                    ‹
-                  </button>
-                  <button
-                    onClick={() => setActiveImage(i =>
-                      (i + 1) % product.images.length
-                    )}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8
-                               bg-white/80 rounded-full flex items-center justify-center
-                               shadow-md hover:bg-white transition-all text-lg font-bold"
-                    style={{ color: 'var(--color-dark)' }}>
-                    ›
-                  </button>
-                </>
-              )}
-
-              {/* Image counter */}
-              {product.images?.length > 1 && (
-                <div className="absolute bottom-4 right-4 bg-black/40 text-white text-xs
-                                px-2.5 py-1 rounded-full">
-                  {activeImage + 1} / {product.images.length}
+                <div className="hidden md:flex flex-col gap-2 w-16 shrink-0">
+                  {product.images.map((img, i) => (
+                    <button key={i} onClick={() => setActiveImage(i)}
+                      className="w-16 h-16 rounded-xl overflow-hidden transition-all shrink-0"
+                      style={{
+                        border: activeImage === i
+                          ? '2.5px solid var(--color-primary)'
+                          : '2.5px solid transparent',
+                        backgroundColor: 'var(--color-soft)',
+                        opacity: activeImage === i ? 1 : 0.65,
+                      }}>
+                      <img src={img} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
+                    </button>
+                  ))}
                 </div>
               )}
+
+              {/* Main image */}
+              <div className="relative rounded-3xl overflow-hidden aspect-square group flex-1"
+                   style={{ backgroundColor: 'var(--color-soft)' }}>
+                <img
+                  src={product.images?.[activeImage] || product.image}
+                  alt={product.name}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                />
+
+                {/* Top left badges */}
+                <div className="absolute top-4 left-4 flex flex-col gap-2">
+                  <span className="px-3 py-1.5 rounded-full text-xs font-medium capitalize text-white"
+                        style={{ backgroundColor: 'var(--color-primary)' }}>
+                    {product.category}
+                  </span>
+                  {!inStock && (
+                    <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-red-500 text-white">
+                      Out of Stock
+                    </span>
+                  )}
+                </div>
+
+                {/* Share button */}
+                <button onClick={handleShare}
+                  className="absolute top-4 right-4 w-9 h-9 bg-white rounded-full
+                             flex items-center justify-center shadow-md hover:scale-110 transition-transform">
+                  <FiShare2 size={15} style={{ color: 'var(--color-muted)' }} />
+                </button>
+
+                {/* Arrow navigation */}
+                {product.images?.length > 1 && (
+                  <>
+                    <button
+                      onClick={() => setActiveImage(i => (i - 1 + product.images.length) % product.images.length)}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8
+                                 bg-white/80 rounded-full flex items-center justify-center
+                                 shadow-md hover:bg-white transition-all text-lg font-bold"
+                      style={{ color: 'var(--color-dark)' }}>
+                      ‹
+                    </button>
+                    <button
+                      onClick={() => setActiveImage(i => (i + 1) % product.images.length)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8
+                                 bg-white/80 rounded-full flex items-center justify-center
+                                 shadow-md hover:bg-white transition-all text-lg font-bold"
+                      style={{ color: 'var(--color-dark)' }}>
+                      ›
+                    </button>
+                  </>
+                )}
+
+                {/* Image counter */}
+                {product.images?.length > 1 && (
+                  <div className="absolute bottom-4 right-4 bg-black/40 text-white text-xs px-2.5 py-1 rounded-full">
+                    {activeImage + 1} / {product.images.length}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Thumbnails */}
+            {/* Thumbnails — mobile only */}
             {product.images?.length > 1 && (
-              <div className="flex gap-2">
+              <div className="flex md:hidden gap-2">
                 {product.images.map((img, i) => (
                   <button key={i} onClick={() => setActiveImage(i)}
-                    className="flex-1 aspect-square rounded-xl overflow-hidden
-                               transition-all"
+                    className="flex-1 aspect-square rounded-xl overflow-hidden transition-all"
                     style={{
                       border: activeImage === i
                         ? '2.5px solid var(--color-primary)'
@@ -284,8 +297,7 @@ export default function ProductDetail() {
                       backgroundColor: 'var(--color-soft)',
                       opacity: activeImage === i ? 1 : 0.7,
                     }}>
-                    <img src={img} alt={`View ${i + 1}`}
-                         className="w-full h-full object-cover" />
+                    <img src={img} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
                   </button>
                 ))}
               </div>
@@ -306,8 +318,7 @@ export default function ProductDetail() {
                 },
               ].map(({ icon, text }) => (
                 <div key={text}
-                     className="flex flex-col items-center gap-1.5 p-3 rounded-2xl
-                                text-center bg-white"
+                     className="flex flex-col items-center gap-1.5 p-3 rounded-2xl text-center bg-white"
                      style={{ boxShadow: 'var(--shadow-card)' }}>
                   <span style={{ color: 'var(--color-primary)' }}>{icon}</span>
                   <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{text}</p>
@@ -315,6 +326,7 @@ export default function ProductDetail() {
               ))}
             </div>
           </div>
+
 
           {/* RIGHT — Details */}
           <div className="flex flex-col gap-5 pt-2">
@@ -346,7 +358,12 @@ export default function ProductDetail() {
             {/* Price */}
             <div className="flex items-baseline gap-3">
               {(() => {
-                const effectivePrice = resolveComboPrice(product.price, product.comboPrices, quantity);
+                const basePrice      = selectedVariant ? selectedVariant.price : product.price;
+                const effectivePrice = resolveComboPrice(basePrice, product.comboPrices, quantity);
+                const mrp            = selectedVariant
+                  ? Math.round(selectedVariant.price * 1.2)
+                  : Math.round(product.price * 1.2);
+                const discountPct    = Math.round(((mrp - effectivePrice) / mrp) * 100);
                 return (
                   <>
                     <span className="text-4xl font-semibold"
@@ -354,14 +371,14 @@ export default function ProductDetail() {
                       ₹{effectivePrice}
                     </span>
                     <span className="text-sm line-through" style={{ color: 'var(--color-muted)' }}>
-                      ₹{Math.round(product.price * 1.2)}
+                      ₹{mrp}
                     </span>
-                    {effectivePrice < product.price
+                    {effectivePrice < basePrice
                       ? <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-600">
                           Combo price!
                         </span>
                       : <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-600">
-                          20% off
+                          {discountPct}% off
                         </span>
                     }
                   </>
@@ -427,43 +444,127 @@ export default function ProductDetail() {
             {product.variants?.length > 0 && (
               <div>
                 <p className="text-xs font-semibold uppercase tracking-widest mb-3"
-                   style={{ color: 'var(--color-muted)' }}>
-                  Size
-                  {selectedVariant && (
-                    <span className="ml-2 normal-case font-normal"
-                          style={{ color: 'var(--color-primary)' }}>
-                      — {selectedVariant.label}
-                    </span>
-                  )}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {product.variants.map((v, i) => {
-                    const active = selectedVariant?.label === v.label;
-                    const outOfStock = v.stock === 0;
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        disabled={outOfStock}
-                        onClick={() => { setSelectedVariant(v); setQuantity(1); }}
-                        className="px-4 py-2 rounded-full text-sm font-medium border transition-all"
-                        style={{
-                          borderColor:     active ? 'var(--color-primary)' : 'var(--color-soft)',
-                          backgroundColor: active ? 'var(--color-soft)'    : 'white',
-                          color:           outOfStock ? 'var(--color-muted)'
-                                         : active    ? 'var(--color-primary)'
-                                         : 'var(--color-dark)',
-                          opacity:         outOfStock ? 0.5 : 1,
-                          textDecoration:  outOfStock ? 'line-through' : 'none',
-                        }}
-                      >
-                        {v.label}
-                        <span className="ml-1.5 text-xs" style={{ color: active ? 'var(--color-primary)' : 'var(--color-muted)' }}>
-                          ₹{v.price}
-                        </span>
-                      </button>
-                    );
-                  })}
+                   style={{ color: 'var(--color-muted)' }}>Select Size</p>
+
+                {/* Dropdown trigger */}
+                <div className="relative">
+                  <details className="group" id="variant-dropdown">
+                    {/* Selected variant display — acts as dropdown trigger */}
+                    <summary
+                      className="flex items-center justify-between px-4 py-3.5 rounded-2xl
+                                 cursor-pointer list-none transition-all"
+                      style={{
+                        border: '2px solid var(--color-primary)',
+                        backgroundColor: 'var(--color-soft)',
+                      }}
+                    >
+                      {selectedVariant ? (
+                        <div className="flex items-center justify-between w-full pr-2">
+                          <div>
+                            <span className="text-sm font-semibold" style={{ color: 'var(--color-dark)' }}>
+                              {selectedVariant.label}
+                            </span>
+                            <span className="ml-3 text-base font-bold" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-serif)' }}>
+                              ₹{selectedVariant.price}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {selectedVariant.stock === 0 ? (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-500 font-medium">Out of stock</span>
+                            ) : (
+                              <span className="text-xs font-medium" style={{ color: '#22c55e' }}>In stock</span>
+                            )}
+                            <svg className="w-4 h-4 transition-transform group-open:rotate-180"
+                                 style={{ color: 'var(--color-primary)' }}
+                                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-sm" style={{ color: 'var(--color-muted)' }}>Choose a size…</span>
+                      )}
+                    </summary>
+
+                    {/* Dropdown options */}
+                    <div className="absolute left-0 right-0 z-20 mt-2 rounded-2xl overflow-hidden"
+                         style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.12)', backgroundColor: 'white', border: '1px solid var(--color-soft)' }}>
+                      {product.variants.map((v, i) => {
+                        const active      = selectedVariant?.label === v.label;
+                        const outOfStock  = v.stock === 0;
+                        const basePrice   = product.price;
+                        const discount    = basePrice > v.price
+                          ? Math.round(((basePrice - v.price) / basePrice) * 100)
+                          : null;
+
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            disabled={outOfStock}
+                            onClick={() => {
+                              setSelectedVariant(v);
+                              setQuantity(1);
+                              document.getElementById('variant-dropdown')?.removeAttribute('open');
+                            }}
+                            className="w-full flex items-center justify-between px-4 py-3.5
+                                       transition-all text-left"
+                            style={{
+                              backgroundColor: active ? 'var(--color-soft)' : 'white',
+                              borderBottom: i < product.variants.length - 1 ? '1px solid var(--color-soft)' : 'none',
+                              opacity: outOfStock ? 0.5 : 1,
+                              cursor: outOfStock ? 'not-allowed' : 'pointer',
+                            }}
+                            onMouseEnter={e => { if (!outOfStock) e.currentTarget.style.backgroundColor = 'var(--color-soft)'; }}
+                            onMouseLeave={e => { if (!active) e.currentTarget.style.backgroundColor = 'white'; }}
+                          >
+                            {/* Left — size + price */}
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-semibold" style={{ color: active ? 'var(--color-primary)' : 'var(--color-dark)' }}>
+                                  {v.label}
+                                </span>
+                                {active && (
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"
+                                       stroke="var(--color-primary)" strokeWidth="3">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-sm font-bold" style={{ color: 'var(--color-primary)', fontFamily: 'var(--font-serif)' }}>
+                                  ₹{v.price}
+                                </span>
+                                {discount > 0 && (
+                                  <span className="text-xs font-medium" style={{ color: '#ef4444' }}>
+                                    {discount}% off
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Right — stock */}
+                            <div className="shrink-0 text-right">
+                              {outOfStock ? (
+                                <span className="text-xs px-2 py-1 rounded-full bg-red-50 text-red-400 font-medium">
+                                  Out of stock
+                                </span>
+                              ) : v.stock <= 5 ? (
+                                <span className="text-xs px-2 py-1 rounded-full font-medium"
+                                      style={{ backgroundColor: '#FEF3C7', color: '#D97706' }}>
+                                  Only {v.stock} left
+                                </span>
+                              ) : (
+                                <span className="text-xs font-medium" style={{ color: '#22c55e' }}>
+                                  In stock
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </details>
                 </div>
               </div>
             )}

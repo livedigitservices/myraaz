@@ -35,7 +35,7 @@ const Skeleton = () => (
   </div>
 );
 
-const StaticFallback = () => (
+const StaticFallback = ({ freeAbove = 999 }) => (
   <div className="relative flex items-center justify-center h-96 md:h-auto">
     <div className="absolute w-56 h-72 rounded-3xl rotate-6 opacity-40"
          style={{ backgroundColor: 'var(--color-secondary)' }} />
@@ -63,28 +63,33 @@ const StaticFallback = () => (
     </div>
     <div className="absolute bottom-8 left-0 bg-white rounded-2xl px-3 py-2 shadow-lg">
       <p className="text-xs font-medium" style={{ color: 'var(--color-dark)' }}>🚚 Free delivery</p>
-      <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Orders above ₹999</p>
+      <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Orders above ₹{freeAbove.toLocaleString('en-IN')}</p>
     </div>
   </div>
 );
 
 export default function HeroProduct() {
-  const [product, setProduct] = useState(undefined); // undefined=loading, null=not set
+  const [product,   setProduct]   = useState(undefined);
+  const [freeAbove, setFreeAbove] = useState(999);
 
   useEffect(() => {
     api.get('/home-featured')
       .then(({ data }) => setProduct(data))
       .catch(() => setProduct(null));
+
+    api.get('/delivery/calculate?subtotal=0')
+      .then(({ data }) => { if (data.freeAbove) setFreeAbove(data.freeAbove); })
+      .catch(() => {});
   }, []);
 
   if (product === undefined) return <Skeleton />;
-  if (!product)              return <StaticFallback />;
+  if (!product)              return <StaticFallback freeAbove={freeAbove} />;
 
-  const image    = product.images?.[0];
-  const price    = product.price;
-  const sale     = product.salePrice;
-  const rating   = product.rating   ?? 0;
-  const reviews  = product.numReviews ?? 0;
+  const image   = product.images?.[0];
+  const price   = product.price;
+  const sale    = product.salePrice;
+  const rating  = product.rating    ?? 0;
+  const reviews = product.numReviews ?? 0;
 
   return (
     <div className="relative flex items-center justify-center h-96 md:h-auto">
@@ -104,10 +109,8 @@ export default function HeroProduct() {
       >
         {image ? (
           <>
-            {/* Product image */}
             <img src={image} alt={product.name} className="w-full h-full object-cover" />
 
-            {/* Best Seller badge */}
             {product.isBestSeller && (
               <div className="absolute top-2 left-2 px-2 py-1 rounded-full text-xs font-medium"
                    style={{ backgroundColor: '#FEF3C7', color: '#92400E' }}>
@@ -115,20 +118,16 @@ export default function HeroProduct() {
               </div>
             )}
 
-            {/* Name + price overlay */}
             <div className="absolute bottom-0 left-0 right-0 p-3"
                  style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.6), transparent)' }}>
               <p className="text-white text-xs font-medium line-clamp-1">{product.name}</p>
               <p className="text-white text-sm font-semibold">
                 ₹{sale ?? price}
-                {sale && (
-                  <span className="text-xs line-through ml-1 opacity-70">₹{price}</span>
-                )}
+                {sale && <span className="text-xs line-through ml-1 opacity-70">₹{price}</span>}
               </p>
             </div>
           </>
         ) : (
-          /* No-image fallback */
           <div className="w-full h-full flex flex-col items-center justify-center p-6 gap-4">
             <div className="text-6xl">🌿</div>
             <div className="text-center">
@@ -170,10 +169,10 @@ export default function HeroProduct() {
         </div>
       )}
 
-      {/* Free delivery badge — bottom left */}
+      {/* Free delivery badge — bottom left — dynamic */}
       <div className="absolute bottom-8 left-0 bg-white rounded-2xl px-3 py-2 shadow-lg">
         <p className="text-xs font-medium" style={{ color: 'var(--color-dark)' }}>🚚 Free delivery</p>
-        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Orders above ₹999</p>
+        <p className="text-xs" style={{ color: 'var(--color-muted)' }}>Orders above ₹{freeAbove.toLocaleString('en-IN')}</p>
       </div>
 
     </div>
