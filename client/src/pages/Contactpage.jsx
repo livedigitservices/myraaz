@@ -248,7 +248,7 @@ export default function ContactPage() {
         <div>
           <p className="font-medium text-dark mb-1">Email</p>
           <a href="mailto:support@myraaz.com" className="hover:text-primary transition-colors">
-            support@myraaz.com
+            myraazofficial@gmail.com
           </a>
         </div>
         <div>
