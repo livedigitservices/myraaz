@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { FiInstagram, FiTwitter, FiFacebook, FiMail } from 'react-icons/fi';
+import { FiInstagram, FiTwitter, FiFacebook, FiMail, FiMapPin } from 'react-icons/fi';
 
 const HELP_LINKS = [
   { label: 'About Us',        to: '/about'           },
@@ -18,14 +18,15 @@ const SHOP_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-  { label: 'Instagram', href: 'https://instagram.com/', Icon: FiInstagram },
-  { label: 'Facebook',  href: 'https://facebook.com/',          Icon: FiFacebook },
-  { label: 'Gmail',     href: 'mailto:myraazofficial@gmail.com',      Icon: FiMail     },
+  { label: 'Instagram', href: 'https://instagram.com/',                    Icon: FiInstagram },
+  { label: 'Facebook',  href: 'https://facebook.com/',                     Icon: FiFacebook  },
+  { label: 'Gmail',     href: 'https://mail.google.com/mail/?view=cm&fs=1&to=myraazofficial@gmail.com',           Icon: FiMail,     isMail: true },
+  { label: 'Maps',      href: 'https://maps.app.goo.gl/vdmw3oU3aLGNdriZ8',         Icon: FiMapPin    },
 ];
 
 function SocialButton({ href, label, Icon }) {
   return (
-    <a
+     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
