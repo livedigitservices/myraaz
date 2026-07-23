@@ -225,11 +225,17 @@ const processRefund = async (returnDoc, order) => {
    Requires Razorpay X account
 ════════════════════════════════════ */
 const processRazorpayPayout = async ({ upiId, amount, orderId, returnId }) => {
-  const axios = require('axios');
+  const auth = Buffer
+    .from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`)
+    .toString('base64');
 
-  const response = await axios.post(
-    'https://api.razorpay.com/v1/payouts',
-    {
+  const response = await fetch('https://api.razorpay.com/v1/payouts', {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Basic ${auth}`,
+    },
+    body: JSON.stringify({
       account_number: process.env.RAZORPAY_ACCOUNT_NUMBER,
       fund_account: {
         account_type: 'vpa',
@@ -247,16 +253,13 @@ const processRazorpayPayout = async ({ upiId, amount, orderId, returnId }) => {
       queue_if_low_balance: true,
       reference_id:         orderId,
       narration:            `Refund for order ${orderId.slice(-8)}`,
-    },
-    {
-      auth: {
-        username: process.env.RAZORPAY_KEY_ID,
-        password: process.env.RAZORPAY_KEY_SECRET,
-      },
-    }
-  );
+    }),
+  });
 
-  return response.data;
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.error?.description || 'Razorpay payout failed');
+
+  return data;
 };
 
 module.exports = { processRefund, calculateRefundAmount };

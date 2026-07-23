@@ -126,8 +126,16 @@ const placeOrder = async (req, res) => {
   await User.findByIdAndUpdate(req.user._id, { $set: { cart: [] } }).catch(() => {});
 
   if (coupon?.code) {
+    // Atomic: only increments if the coupon still has uses left,
+    // so two concurrent checkouts can't both slip past maxUses.
     await Coupon.findOneAndUpdate(
-      { code: coupon.code.toUpperCase() },
+      {
+        code: coupon.code.toUpperCase(),
+        $or: [
+          { maxUses: 0 },
+          { $expr: { $lt: ['$usedCount', '$maxUses'] } },
+        ],
+      },
       { $inc: { usedCount: 1 } }
     ).catch(() => {});
   }

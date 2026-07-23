@@ -28,15 +28,17 @@ const updateUserProfile = async (req, res) => {
 
     /* Only update email if provided and not a placeholder */
     if (req.body.email && !req.body.email.includes('@placeholder.com')) {
+      const normalizedEmail = req.body.email.toLowerCase().trim();
+
       /* Check email not taken by another user */
       const emailExists = await User.findOne({
-        email: req.body.email,
+        email: normalizedEmail,
         _id:   { $ne: user._id },
       });
       if (emailExists)
         return res.status(400).json({ message: 'Email already in use' });
 
-      user.email       = req.body.email;
+      user.email       = normalizedEmail;
       user.isPhoneUser = false; // now has real email
     }
 

@@ -45,8 +45,9 @@ const corsOptions = {
 app.options('/{*path}', cors(corsOptions));
 app.use(cors(corsOptions));
 
-// Raw body for Razorpay webhook — MUST come before express.json()
+// Raw body for Razorpay webhooks — MUST come before express.json()
 app.use('/api/payment/webhook/razorpay', express.raw({ type: 'application/json' }));
+app.use('/api/returns/webhook/razorpay', express.raw({ type: 'application/json' }));
 app.use(express.json({ limit: '10kb' })); // limit body size
 
 // Routes
@@ -62,8 +63,6 @@ app.use('/api/returns',       require('./routes/returnRoutes'));
 app.use('/api/wallet',        require('./routes/walletRoutes'));
 app.use('/api/home-media',    require('./routes/homeMediaRoutes'));
 app.use('/api/home-featured', require('./routes/homeFeaturedRoutes'));
-app.use('/api/delivery',      require('./routes/deliveryRoutes'));
-app.use('/api/combo-offers',  require('./routes/comboOfferRoutes'));
 
 app.get('/', (req, res) => res.send('myRaaz API is running 🌿'));
 
