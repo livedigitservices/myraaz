@@ -18,8 +18,8 @@ const SHOP_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-  { label: 'Instagram', href: 'https://instagram.com/',                    Icon: FiInstagram },
-  { label: 'Facebook',  href: 'https://facebook.com/',                     Icon: FiFacebook  },
+  { label: 'Instagram', href: 'https://www.instagram.com/myraazofficial2/',                    Icon: FiInstagram },
+  { label: 'Facebook',  href: 'https://www.facebook.com/profile.php?id=61592214005156',                     Icon: FiFacebook  },
   { label: 'Gmail',     href: 'https://mail.google.com/mail/?view=cm&fs=1&to=myraazofficial@gmail.com',           Icon: FiMail,     isMail: true },
   { label: 'Maps',      href: 'https://maps.app.goo.gl/vdmw3oU3aLGNdriZ8',         Icon: FiMapPin    },
 ];
