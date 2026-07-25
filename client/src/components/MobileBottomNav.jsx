@@ -42,13 +42,13 @@ export default function MobileBottomNav() {
             to={to}
             className="relative flex flex-col items-center justify-center gap-0.5
                        flex-1 py-2.5 transition-all duration-150"
-            style={{ color: active ? 'var(--color-primary)' : 'var(--color-muted)' }}
+            style={{ color: active ? 'var(--color-dark)' : 'var(--color-muted)' }}
           >
-            {/* Active pill indicator */}
+            {/* Active hairline indicator */}
             {active && (
               <span
-                className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full"
-                style={{ backgroundColor: 'var(--color-primary)' }}
+                className="absolute top-0 left-1/2 -translate-x-1/2 w-6 h-px"
+                style={{ backgroundColor: 'var(--color-accent)' }}
               />
             )}
 
@@ -56,8 +56,12 @@ export default function MobileBottomNav() {
             <span className="relative">
               <Icon
                 size={20}
-                strokeWidth={active ? 2.2 : 1.8}
-                style={{ transition: 'transform 150ms', transform: active ? 'scale(1.15)' : 'scale(1)' }}
+                strokeWidth={active ? 2.2 : 1.6}
+                style={{
+                  color: active ? 'var(--color-accent)' : 'var(--color-muted)',
+                  transition: 'transform 150ms',
+                  transform: active ? 'scale(1.12)' : 'scale(1)',
+                }}
               />
               {/* Badge */}
               {badge > 0 && (
@@ -65,7 +69,7 @@ export default function MobileBottomNav() {
                   className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1
                              rounded-full text-[9px] font-bold text-white
                              flex items-center justify-center"
-                  style={{ backgroundColor: 'var(--color-primary)' }}
+                  style={{ backgroundColor: 'var(--color-dark)' }}
                 >
                   {badge > 99 ? '99+' : badge}
                 </span>
@@ -73,7 +77,7 @@ export default function MobileBottomNav() {
             </span>
 
             <span
-              className="text-[10px] font-medium leading-none"
+              className="text-[10px] leading-none uppercase tracking-wide"
               style={{ fontWeight: active ? 600 : 400 }}
             >
               {label}

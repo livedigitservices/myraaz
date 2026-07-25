@@ -564,8 +564,8 @@ export default function Home() {
         <div className="flex items-end justify-between mb-10 md:mb-14">
           <div>
             <div className="flex items-center gap-3 mb-3">
-              <span style={{ width: '28px', height: '1px', backgroundColor: '#B8934A' }} />
-              <p className="text-xs font-medium uppercase tracking-[0.2em]" style={{ color: '#B8934A' }}>
+              <span style={{ width: '28px', height: '1px', backgroundColor: 'var(--color-accent)'}} />
+              <p className="text-xs font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-accent)' }}>
                 The Collection
               </p>
             </div>

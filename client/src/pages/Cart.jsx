@@ -9,15 +9,26 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
-
+/* ── Eyebrow — the flanked-line label used across the site ── */
+const Eyebrow = ({ children, light = false }) => (
+  <div className="flex items-center gap-2.5 mb-3">
+    <span style={{ width: '20px', height: '1px', backgroundColor: 'var(--color-accent)' }} />
+    <p className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-accent)' }}>
+      {children}
+    </p>
+  </div>
+);
 
 /* ── Empty cart ── */
 const EmptyCart = () => (
-  <div className="flex flex-col items-center justify-center py-24 text-center">
-    <div className="w-24 h-24 rounded-full flex items-center justify-center mb-6"
-         style={{ backgroundColor: 'var(--color-soft)' }}>
-      <FiShoppingCart size={36} style={{ color: 'var(--color-muted)' }} />
+  <div className="flex flex-col items-center justify-center py-28 text-center">
+    <div className="w-20 h-20 rounded-full flex items-center justify-center mb-6"
+         style={{ border: '1px solid var(--color-accent)' }}>
+      <FiShoppingCart size={30} style={{ color: 'var(--color-accent)' }} />
     </div>
+    <p className="text-[11px] font-medium uppercase tracking-[0.2em] mb-3" style={{ color: 'var(--color-accent)' }}>
+      Your Bag
+    </p>
     <h2 className="text-2xl font-semibold mb-2"
         style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
       Your cart is empty
@@ -45,16 +56,16 @@ const CartItem = ({ item, onUpdate, onRemove }) => {
   };
 
   return (
-    <div className={`bg-white rounded-2xl p-4 flex gap-4 transition-all duration-300
+    <div className={`relative bg-white flex gap-4 sm:gap-5 p-4 sm:p-5 transition-all duration-300
                      ${removing ? 'opacity-0 scale-95' : 'opacity-100'}`}
-         style={{ boxShadow: 'var(--shadow-card)' }}>
+         style={{ boxShadow: 'var(--shadow-card)', borderLeft: '2px solid var(--color-soft)' }}>
 
       {/* Image */}
       <Link to={`/products/${item._id}`} className="shrink-0">
-        <div className="w-24 h-24 rounded-xl overflow-hidden"
+        <div className="w-24 h-24 sm:w-28 sm:h-28 overflow-hidden"
              style={{ backgroundColor: 'var(--color-soft)' }}>
           <img src={item.image} alt={item.name}
-               className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
+               className="w-full h-full object-cover hover:scale-105 transition-transform duration-500" />
         </div>
       </Link>
 
@@ -62,21 +73,25 @@ const CartItem = ({ item, onUpdate, onRemove }) => {
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="text-xs mb-0.5" style={{ color: 'var(--color-muted)' }}>{item.brand}</p>
+            <p className="text-[10px] uppercase tracking-widest mb-0.5" style={{ color: 'var(--color-muted)' }}>
+              {item.brand}
+            </p>
             <Link to={`/products/${item._id}`}>
               <h3 className="text-sm font-semibold line-clamp-2 leading-snug hover:underline"
                   style={{ color: 'var(--color-dark)' }}>{item.name}</h3>
             </Link>
-            <span className="inline-block mt-1.5 px-2 py-0.5 rounded-full text-xs capitalize"
-                  style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-primary)' }}>
+            <span className="inline-block mt-1.5 text-[10px] uppercase tracking-[0.15em]"
+                  style={{ color: 'var(--color-accent)' }}>
               {item.category}
             </span>
           </div>
           {/* Remove */}
           <button onClick={handleRemove}
-            className="p-2 rounded-xl transition-all hover:bg-red-50 shrink-0"
-            style={{ color: 'var(--color-muted)' }}>
-            <FiTrash2 size={15} className="hover:text-red-400 transition-colors" />
+            className="p-1.5 transition-all shrink-0"
+            style={{ color: 'var(--color-muted)' }}
+            onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
+            onMouseLeave={e => e.currentTarget.style.color = 'var(--color-muted)'}>
+            <FiTrash2 size={15} />
           </button>
         </div>
 
@@ -88,17 +103,16 @@ const CartItem = ({ item, onUpdate, onRemove }) => {
               ₹{((item.effectivePrice ?? item.price) * item.quantity).toLocaleString('en-IN')}
             </span>
             {item.effectivePrice && item.effectivePrice < item.price && (
-              <p className="text-xs text-green-600 font-medium mt-0.5">
+              <p className="text-xs font-medium mt-0.5" style={{ color: 'var(--color-accent)' }}>
                 Combo deal · ₹{item.effectivePrice}/unit
               </p>
             )}
           </div>
 
           {/* Qty stepper */}
-          <div className="flex items-center rounded-full overflow-hidden"
-               style={{ border: '1.5px solid var(--color-soft)' }}>
+          <div className="flex items-center" style={{ border: '1px solid var(--color-soft)' }}>
             <button onClick={() => onUpdate(item._id, item.quantity - 1)}
-              className="w-8 h-8 flex items-center justify-center transition-colors hover:bg-soft"
+              className="w-8 h-8 flex items-center justify-center transition-colors"
               style={{ color: 'var(--color-dark)' }}>
               <FiMinus size={12} />
             </button>
@@ -115,7 +129,7 @@ const CartItem = ({ item, onUpdate, onRemove }) => {
         </div>
 
         {/* Unit price */}
-        <p className="text-xs mt-1" style={{ color: 'var(--color-muted)' }}>
+        <p className="text-xs mt-1.5" style={{ color: 'var(--color-muted)' }}>
           {item.effectivePrice && item.effectivePrice < item.price
             ? <><s>₹{item.price}</s> → ₹{item.effectivePrice} per unit</>
             : `₹${item.price} per unit`}
@@ -237,62 +251,84 @@ export default function Cart() {
   return (
     <div style={{ backgroundColor: 'var(--color-cream)' }}>
 
-      {/* Header */}
-      <div style={{ backgroundColor: 'var(--color-primary)' }} className="py-10">
-        <div className="max-w-6xl mx-auto px-4">
+      {/* Header — dark editorial band, matches Products/Perks/Footer */}
+      <div className="relative overflow-hidden py-12 md:py-16" style={{ backgroundColor: 'var(--color-dark)' }}>
+        <div className="absolute inset-0 opacity-[0.05]"
+             style={{
+               backgroundImage: `url(https://images.unsplash.com/photo-1607083206968-13611e3d76db?auto=format&fit=crop&w=1600&q=60)`,
+               backgroundSize: 'cover',
+               backgroundPosition: 'center',
+             }} />
+        <div className="absolute inset-0"
+             style={{ background: 'radial-gradient(ellipse at center, transparent 0%, var(--color-dark) 85%)' }} />
+
+        <div className="relative max-w-6xl mx-auto px-4">
           <Link to="/products"
-                className="flex items-center gap-2 text-white/70 text-sm mb-3 hover:text-white transition-colors w-fit">
+                className="flex items-center gap-2 text-sm mb-5 transition-colors w-fit"
+                style={{ color: 'rgba(255,255,255,0.55)' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#FFFFFF'}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(255,255,255,0.55)'}>
             <FiArrowLeft size={14} /> Continue Shopping
           </Link>
-          <h1 className="text-3xl font-semibold text-white"
+          <div className="flex items-center gap-2.5 mb-3">
+            <span style={{ width: '24px', height: '1px', backgroundColor: 'var(--color-accent)' }} />
+            <p className="text-[11px] font-medium uppercase tracking-[0.25em]" style={{ color: 'var(--color-accent)' }}>
+              Your Bag
+            </p>
+          </div>
+          <h1 className="text-3xl md:text-4xl font-semibold text-white"
               style={{ fontFamily: 'var(--font-serif)' }}>
             My Cart
           </h1>
-          <p className="text-white/60 text-sm mt-1">
+          <p className="text-sm mt-1.5" style={{ color: 'rgba(255,255,255,0.5)' }}>
             {cartItems.length} {cartItems.length === 1 ? 'item' : 'items'} in your cart
           </p>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-7">
+      <div className="max-w-6xl mx-auto px-4 py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
           {/* ── LEFT — Cart Items ── */}
           <div className="lg:col-span-2 space-y-4">
 
             {/* Clear all */}
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium" style={{ color: 'var(--color-dark)' }}>
+            <div className="flex items-center justify-between pb-2">
+              <p className="text-xs uppercase tracking-widest font-medium" style={{ color: 'var(--color-muted)' }}>
                 {cartItems.reduce((s, i) => s + i.quantity, 0)} total items
               </p>
               <button onClick={() => { clearCart(); toast.info('Cart cleared'); }}
-                className="text-xs flex items-center gap-1.5 transition-colors hover:text-red-500"
-                style={{ color: 'var(--color-muted)' }}>
+                className="text-xs flex items-center gap-1.5 transition-colors"
+                style={{ color: 'var(--color-muted)' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#EF4444'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--color-muted)'}>
                 <FiTrash2 size={13} /> Clear all
               </button>
             </div>
 
             {/* Items */}
-            {cartItems.map(item => (
-              <CartItem
-                key={item._id}
-                item={item}
-                onUpdate={updateQuantity}
-                onRemove={removeFromCart}
-              />
-            ))}
+            <div className="space-y-4">
+              {cartItems.map(item => (
+                <CartItem
+                  key={item._id}
+                  item={item}
+                  onUpdate={updateQuantity}
+                  onRemove={removeFromCart}
+                />
+              ))}
+            </div>
 
             {/* Promo code */}
-            <div className="bg-white rounded-2xl p-5" style={{ boxShadow: 'var(--shadow-card)' }}>
-              <div className="flex items-center gap-2 mb-3">
-                <FiTag size={15} style={{ color: 'var(--color-primary)' }} />
-                <p className="text-sm font-semibold" style={{ color: 'var(--color-dark)' }}>
+            <div className="bg-white p-6" style={{ boxShadow: 'var(--shadow-card)', borderTop: '2px solid var(--color-accent)' }}>
+              <div className="flex items-center gap-2 mb-4">
+                <FiTag size={14} style={{ color: 'var(--color-accent)' }} />
+                <p className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-dark)' }}>
                   Promo Code
                 </p>
               </div>
 
               {appliedPromo ? (
-                <div className="flex items-center justify-between p-3 rounded-xl"
+                <div className="flex items-center justify-between p-3.5"
                      style={{ backgroundColor: 'var(--color-soft)' }}>
                   <div>
                     <p className="text-sm font-semibold" style={{ color: 'var(--color-primary)' }}>
@@ -303,8 +339,8 @@ export default function Cart() {
                     </p>
                   </div>
                   <button onClick={removePromo}
-                    className="text-xs font-medium px-3 py-1 rounded-full transition-all"
-                    style={{ color: 'var(--color-primary)', border: '1px solid var(--color-primary)' }}>
+                    className="text-xs font-medium px-3 py-1.5 transition-all"
+                    style={{ color: 'var(--color-dark)', border: '1px solid var(--color-dark)' }}>
                     Remove
                   </button>
                 </div>
@@ -317,36 +353,34 @@ export default function Cart() {
                       onChange={e => { setPromoInput(e.target.value.toUpperCase()); setPromoError(''); }}
                       onKeyDown={e => e.key === 'Enter' && applyPromo()}
                       placeholder="Enter code (e.g. RAAZ20)"
-                      className="input flex-1 uppercase text-sm tracking-widest"
+                      className="flex-1 uppercase text-sm tracking-widest px-3 py-2.5 bg-transparent focus:outline-none"
+                      style={{ border: '1px solid var(--color-soft)', color: 'var(--color-dark)' }}
                     />
                     <button onClick={applyPromo}
-                      className="px-5 py-2.5 rounded-xl text-sm font-medium text-white
+                      className="px-6 py-2.5 text-xs font-medium uppercase tracking-wider text-white
                                  transition-all hover:opacity-90 shrink-0"
-                      style={{ backgroundColor: 'var(--color-primary)' }}>
+                      style={{ backgroundColor: 'var(--color-dark)' }}>
                       Apply
                     </button>
                   </div>
                   {promoError && (
                     <p className="text-xs mt-2 text-red-500">{promoError}</p>
                   )}
-                  
                 </>
               )}
             </div>
 
             {/* Perks */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-px" style={{ backgroundColor: 'var(--color-soft)' }}>
               {[
-                { icon: <FiTruck size={16} />,   text: 'Free shipping', sub: `on orders ₹${deliveryInfo.freeAbove}+` },
-                { icon: <FiShield size={16} />,  text: '100% authentic', sub: 'guaranteed'      },
-                { icon: <FiTag size={16} />,     text: 'Best price',    sub: 'always'           },
+                { icon: <FiTruck size={17} />,   text: 'Free shipping', sub: `on orders ₹${deliveryInfo.freeAbove}+` },
+                { icon: <FiShield size={17} />,  text: '100% authentic', sub: 'guaranteed'      },
+                { icon: <FiTag size={17} />,     text: 'Best price',    sub: 'always'           },
               ].map(({ icon, text, sub }) => (
-                <div key={text} className="flex flex-col items-center gap-1.5 p-3
-                                           rounded-2xl text-center bg-white"
-                     style={{ boxShadow: 'var(--shadow-card)' }}>
-                  <span style={{ color: 'var(--color-primary)' }}>{icon}</span>
+                <div key={text} className="flex flex-col items-center gap-1.5 py-5 px-2 text-center bg-white">
+                  <span style={{ color: 'var(--color-accent)' }}>{icon}</span>
                   <p className="text-xs font-medium" style={{ color: 'var(--color-dark)' }}>{text}</p>
-                  <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{sub}</p>
+                  <p className="text-[11px]" style={{ color: 'var(--color-muted)' }}>{sub}</p>
                 </div>
               ))}
             </div>
@@ -356,16 +390,16 @@ export default function Cart() {
           <div className="space-y-4">
 
             {/* Order summary card */}
-            <div className="bg-white rounded-2xl p-6 sticky top-24"
-                 style={{ boxShadow: 'var(--shadow-card)' }}>
-              <h3 className="text-base font-semibold mb-5"
-                  style={{ color: 'var(--color-dark)' }}>Order Summary</h3>
+            <div className="bg-white p-6 sticky top-24"
+                 style={{ boxShadow: 'var(--shadow-card)', borderTop: '2px solid var(--color-accent)' }}>
+              <p className="text-[11px] font-medium uppercase tracking-[0.2em] mb-5"
+                 style={{ color: 'var(--color-dark)' }}>Order Summary</p>
 
               {/* Line items */}
               <div className="space-y-3 mb-5">
                 {cartItems.map(item => (
                   <div key={item._id} className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0"
+                    <div className="w-8 h-8 overflow-hidden shrink-0"
                          style={{ backgroundColor: 'var(--color-soft)' }}>
                       <img src={item.image} alt={item.name}
                            className="w-full h-full object-cover" />
@@ -398,7 +432,7 @@ export default function Cart() {
                 <div className="flex justify-between text-sm">
                   <span style={{ color: 'var(--color-muted)' }}>Shipping</span>
                   {shipping === 0 ? (
-                    <span className="text-green-500 font-medium">Free</span>
+                    <span className="font-medium" style={{ color: 'var(--color-accent)' }}>Free</span>
                   ) : (
                     <span style={{ color: 'var(--color-dark)' }}>₹{shipping}</span>
                   )}
@@ -406,10 +440,10 @@ export default function Cart() {
 
                 {appliedPromo && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-green-500">
+                    <span style={{ color: 'var(--color-accent)' }}>
                       Discount ({appliedPromo.code})
                     </span>
-                    <span className="text-green-500 font-medium">
+                    <span className="font-medium" style={{ color: 'var(--color-accent)' }}>
                       − ₹{discountAmount.toLocaleString('en-IN')}
                     </span>
                   </div>
@@ -418,19 +452,19 @@ export default function Cart() {
                 {/* Combo offer savings */}
                 {comboOffers.map((co, i) => (
                   <div key={i} className="flex justify-between text-sm">
-                    <span className="text-green-500 truncate mr-2">
+                    <span className="truncate mr-2" style={{ color: 'var(--color-accent)' }}>
                       🎁 {co.offer.name}
                       {co.offer.badge ? ` · ${co.offer.badge}` : ''}
                     </span>
-                    <span className="text-green-500 font-medium shrink-0">
+                    <span className="font-medium shrink-0" style={{ color: 'var(--color-accent)' }}>
                       − ₹{co.savings.toLocaleString('en-IN')}
                     </span>
                   </div>
                 ))}
 
                 {savings > 0 && (
-                  <div className="p-2.5 rounded-xl text-xs font-medium text-center"
-                       style={{ backgroundColor: '#f0fdf4', color: '#22c55e' }}>
+                  <div className="p-3 text-xs font-medium text-center"
+                       style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-primary)' }}>
                     🎉 You're saving ₹{savings.toLocaleString('en-IN')} on this order!
                   </div>
                 )}
@@ -441,7 +475,7 @@ export default function Cart() {
 
               {/* Total */}
               <div className="flex justify-between items-center mb-6">
-                <span className="font-semibold" style={{ color: 'var(--color-dark)' }}>Total</span>
+                <span className="text-sm uppercase tracking-widest font-medium" style={{ color: 'var(--color-dark)' }}>Total</span>
                 <span className="text-2xl font-semibold"
                       style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-primary)' }}>
                   ₹{finalTotal.toLocaleString('en-IN')}
@@ -450,17 +484,16 @@ export default function Cart() {
 
               {/* Checkout CTA */}
               <button onClick={handleCheckout}
-                className="w-full flex items-center justify-center gap-2 py-3.5 rounded-full
-                           text-white font-medium text-sm transition-all hover:opacity-90
-                           active:scale-95"
-                style={{ backgroundColor: 'var(--color-primary)' }}>
+                className="w-full flex items-center justify-center gap-2 py-3.5
+                           text-white font-medium text-sm uppercase tracking-wider transition-all hover:opacity-90
+                           active:scale-[0.99]"
+                style={{ backgroundColor: 'var(--color-dark)' }}>
                 Proceed to Checkout <FiChevronRight size={16} />
               </button>
 
               {/* Free shipping nudge */}
               {shipping > 0 && totalPrice < deliveryInfo.freeAbove && (
-                <div className="mt-4 p-3 rounded-xl text-center"
-                     style={{ backgroundColor: 'var(--color-soft)' }}>
+                <div className="mt-4 p-3.5 text-center" style={{ backgroundColor: 'var(--color-soft)' }}>
                   <p className="text-xs" style={{ color: 'var(--color-muted)' }}>
                     Add{' '}
                     <span className="font-semibold" style={{ color: 'var(--color-primary)' }}>
@@ -469,12 +502,11 @@ export default function Cart() {
                     {' '}more for free shipping 🚚
                   </p>
                   {/* Progress bar */}
-                  <div className="mt-2 h-1.5 rounded-full overflow-hidden"
-                       style={{ backgroundColor: 'var(--color-secondary)' }}>
-                    <div className="h-full rounded-full transition-all duration-500"
+                  <div className="mt-2.5 h-1 overflow-hidden" style={{ backgroundColor: 'rgba(0,0,0,0.08)' }}>
+                    <div className="h-full transition-all duration-500"
                          style={{
                            width: `${Math.min((totalPrice / deliveryInfo.freeAbove) * 100, 100)}%`,
-                           backgroundColor: 'var(--color-primary)'
+                           backgroundColor: 'var(--color-accent)'
                          }} />
                   </div>
                 </div>
@@ -493,8 +525,7 @@ export default function Cart() {
             </div>
 
             {/* Suggested — shop more */}
-            <div className="bg-white rounded-2xl p-4 text-center"
-                 style={{ boxShadow: 'var(--shadow-card)' }}>
+            <div className="bg-white p-5 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
               <p className="text-xs mb-3" style={{ color: 'var(--color-muted)' }}>
                 Want to add more?
               </p>

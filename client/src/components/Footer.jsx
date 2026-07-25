@@ -115,7 +115,7 @@ export default function Footer() {
                 <img src="/raaz_favicon.svg" alt="myRaaz logo" className="w-full h-full object-contain" />
               </div>
               <span
-                className="text-2xl tracking-wide"
+                className="text-2xl tracking-wide uppercase"
                 style={{ fontFamily: 'var(--font-serif)', color: 'white' }}
               >
                 my Raaz

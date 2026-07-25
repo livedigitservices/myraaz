@@ -26,12 +26,21 @@ const Stars = ({ rating, size = 14, interactive = false, onRate }) => (
   </div>
 );
 
+/* ── Eyebrow — flanked-line label used across the site ── */
+const Eyebrow = ({ children }) => (
+  <div className="flex items-center gap-2.5">
+    <span style={{ width: '18px', height: '1px', backgroundColor: 'var(--color-accent)' }} />
+    <p className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-accent)' }}>
+      {children}
+    </p>
+  </div>
+);
+
 /* ── Skeleton ── */
 const Skeleton = () => (
   <div className="max-w-6xl mx-auto px-4 py-10 animate-pulse">
     <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-      <div className="aspect-square rounded-3xl"
-           style={{ backgroundColor: 'var(--color-soft)' }} />
+      <div className="aspect-square" style={{ backgroundColor: 'var(--color-soft)' }} />
       <div className="space-y-4 pt-4">
         {[80, 60, 40, 40, 100, 60].map((w, i) => (
           <div key={i} className="h-4 rounded-full"
@@ -49,16 +58,14 @@ const ReturnPolicyBadge = ({ returnPolicy }) => {
   return (
     <div className="flex items-center gap-2 flex-wrap">
       {returnPolicy.returnable ? (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5
-                         rounded-full text-xs font-medium"
-              style={{ backgroundColor: '#F0FDF4', color: '#059669' }}>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium uppercase tracking-wide"
+              style={{ border: '1px solid #A7D8B5', color: '#059669' }}>
           <FiRefreshCw size={11} />
           {returnPolicy.returnDays || 7}-day return policy
         </span>
       ) : (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1.5
-                         rounded-full text-xs font-medium"
-              style={{ backgroundColor: '#FEF2F2', color: '#DC2626' }}>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium uppercase tracking-wide"
+              style={{ border: '1px solid #F3B4B4', color: '#DC2626' }}>
           <FiX size={11} />
           Non-returnable
         </span>
@@ -210,13 +217,13 @@ export default function ProductDetail() {
                 <div className="hidden md:flex flex-col gap-2 w-16 shrink-0">
                   {product.images.map((img, i) => (
                     <button key={i} onClick={() => setActiveImage(i)}
-                      className="w-16 h-16 rounded-xl overflow-hidden transition-all shrink-0"
+                      className="w-16 h-16 overflow-hidden transition-all shrink-0"
                       style={{
                         border: activeImage === i
-                          ? '2.5px solid var(--color-primary)'
-                          : '2.5px solid transparent',
+                          ? '2px solid var(--color-accent)'
+                          : '2px solid transparent',
                         backgroundColor: 'var(--color-soft)',
-                        opacity: activeImage === i ? 1 : 0.65,
+                        opacity: activeImage === i ? 1 : 0.6,
                       }}>
                       <img src={img} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
                     </button>
@@ -224,9 +231,9 @@ export default function ProductDetail() {
                 </div>
               )}
 
-              {/* Main image */}
-              <div className="relative rounded-3xl overflow-hidden aspect-square group flex-1"
-                   style={{ backgroundColor: 'var(--color-soft)' }}>
+              {/* Main image — hairline frame instead of a solid rounded card */}
+              <div className="relative overflow-hidden aspect-square group flex-1"
+                   style={{ backgroundColor: 'var(--color-soft)', border: '1px solid var(--color-soft)' }}>
                 <img
                   src={product.images?.[activeImage] || product.image}
                   alt={product.name}
@@ -234,13 +241,13 @@ export default function ProductDetail() {
                 />
 
                 {/* Top left badges */}
-                <div className="absolute top-4 left-4 flex flex-col gap-2">
-                  <span className="px-3 py-1.5 rounded-full text-xs font-medium capitalize text-white"
-                        style={{ backgroundColor: 'var(--color-primary)' }}>
+                <div className="absolute top-4 left-4 flex flex-col gap-2 items-start">
+                  <span className="text-[10px] font-medium uppercase tracking-[0.15em]"
+                        style={{ color: 'white', textShadow: '0 1px 6px rgba(0,0,0,0.55)' }}>
                     {product.category}
                   </span>
                   {!inStock && (
-                    <span className="px-3 py-1.5 rounded-full text-xs font-medium bg-red-500 text-white">
+                    <span className="px-2.5 py-1 text-[10px] font-medium uppercase tracking-wide bg-red-500 text-white">
                       Out of Stock
                     </span>
                   )}
@@ -248,8 +255,9 @@ export default function ProductDetail() {
 
                 {/* Share button */}
                 <button onClick={handleShare}
-                  className="absolute top-4 right-4 w-9 h-9 bg-white rounded-full
-                             flex items-center justify-center shadow-md hover:scale-110 transition-transform">
+                  className="absolute top-4 right-4 w-9 h-9 rounded-full flex items-center justify-center
+                             transition-transform hover:scale-110"
+                  style={{ backgroundColor: 'rgba(255,255,255,0.92)', backdropFilter: 'blur(4px)' }}>
                   <FiShare2 size={15} style={{ color: 'var(--color-muted)' }} />
                 </button>
 
@@ -259,17 +267,17 @@ export default function ProductDetail() {
                     <button
                       onClick={() => setActiveImage(i => (i - 1 + product.images.length) % product.images.length)}
                       className="absolute left-3 top-1/2 -translate-y-1/2 w-8 h-8
-                                 bg-white/80 rounded-full flex items-center justify-center
-                                 shadow-md hover:bg-white transition-all text-lg font-bold"
-                      style={{ color: 'var(--color-dark)' }}>
+                                 rounded-full flex items-center justify-center
+                                 transition-all text-lg font-bold"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.85)', color: 'var(--color-dark)' }}>
                       ‹
                     </button>
                     <button
                       onClick={() => setActiveImage(i => (i + 1) % product.images.length)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 w-8 h-8
-                                 bg-white/80 rounded-full flex items-center justify-center
-                                 shadow-md hover:bg-white transition-all text-lg font-bold"
-                      style={{ color: 'var(--color-dark)' }}>
+                                 rounded-full flex items-center justify-center
+                                 transition-all text-lg font-bold"
+                      style={{ backgroundColor: 'rgba(255,255,255,0.85)', color: 'var(--color-dark)' }}>
                       ›
                     </button>
                   </>
@@ -289,13 +297,13 @@ export default function ProductDetail() {
               <div className="flex md:hidden gap-2">
                 {product.images.map((img, i) => (
                   <button key={i} onClick={() => setActiveImage(i)}
-                    className="flex-1 aspect-square rounded-xl overflow-hidden transition-all"
+                    className="flex-1 aspect-square overflow-hidden transition-all"
                     style={{
                       border: activeImage === i
-                        ? '2.5px solid var(--color-primary)'
-                        : '2.5px solid transparent',
+                        ? '2px solid var(--color-accent)'
+                        : '2px solid transparent',
                       backgroundColor: 'var(--color-soft)',
-                      opacity: activeImage === i ? 1 : 0.7,
+                      opacity: activeImage === i ? 1 : 0.65,
                     }}>
                     <img src={img} alt={`View ${i + 1}`} className="w-full h-full object-cover" />
                   </button>
@@ -303,8 +311,8 @@ export default function ProductDetail() {
               </div>
             )}
 
-            {/* Perks */}
-            <div className="grid grid-cols-3 gap-3">
+            {/* Perks — hairline-seamed row, matches Cart */}
+            <div className="grid grid-cols-3 gap-px" style={{ backgroundColor: 'var(--color-soft)' }}>
               {[
                 { icon: <FiTruck size={15} />,     text: 'Free ₹999+' },
                 { icon: <FiShield size={15} />,    text: 'Authentic'   },
@@ -318,9 +326,8 @@ export default function ProductDetail() {
                 },
               ].map(({ icon, text }) => (
                 <div key={text}
-                     className="flex flex-col items-center gap-1.5 p-3 rounded-2xl text-center bg-white"
-                     style={{ boxShadow: 'var(--shadow-card)' }}>
-                  <span style={{ color: 'var(--color-primary)' }}>{icon}</span>
+                     className="flex flex-col items-center gap-1.5 py-4 px-2 text-center bg-white">
+                  <span style={{ color: 'var(--color-accent)' }}>{icon}</span>
                   <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{text}</p>
                 </div>
               ))}
@@ -332,13 +339,10 @@ export default function ProductDetail() {
           <div className="flex flex-col gap-5 pt-2">
 
             {/* Brand */}
-            <p className="text-xs font-medium uppercase tracking-widest"
-               style={{ color: 'var(--color-accent)' }}>
-              {product.brand}
-            </p>
+            <Eyebrow>{product.brand}</Eyebrow>
 
             {/* Name */}
-            <h1 className="text-3xl font-semibold leading-snug"
+            <h1 className="text-3xl font-semibold leading-snug capitalize"
                 style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
               {product.name}
             </h1>
@@ -374,10 +378,12 @@ export default function ProductDetail() {
                       ₹{mrp}
                     </span>
                     {effectivePrice < basePrice
-                      ? <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-600">
+                      ? <span className="text-xs font-medium uppercase tracking-wide px-2.5 py-1"
+                              style={{ border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}>
                           Combo price!
                         </span>
-                      : <span className="text-xs font-medium px-2 py-1 rounded-full bg-green-100 text-green-600">
+                      : <span className="text-xs font-medium uppercase tracking-wide px-2.5 py-1"
+                              style={{ border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}>
                           {discountPct}% off
                         </span>
                     }
@@ -396,9 +402,9 @@ export default function ProductDetail() {
                     const active = quantity >= tier.quantity;
                     return (
                       <div key={i}
-                           className="px-3 py-1.5 rounded-full text-xs font-medium border transition-all"
+                           className="px-3 py-1.5 text-xs font-medium border transition-all"
                            style={{
-                             borderColor: active ? 'var(--color-primary)' : 'var(--color-soft)',
+                             borderColor: active ? 'var(--color-accent)' : 'var(--color-soft)',
                              backgroundColor: active ? 'var(--color-soft)' : 'white',
                              color: active ? 'var(--color-primary)' : 'var(--color-muted)',
                            }}>
@@ -422,8 +428,8 @@ export default function ProductDetail() {
 
             {/* Stock */}
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${inStock ? 'bg-green-500' : 'bg-red-400'}`} />
-              <span className="text-sm font-medium"
+              <div className={`w-1.5 h-1.5 rounded-full ${inStock ? 'bg-green-500' : 'bg-red-400'}`} />
+              <span className="text-xs font-medium uppercase tracking-wide"
                     style={{ color: inStock ? '#22c55e' : '#ef4444' }}>
                 {inStock ? `In Stock (${activeStock} left)` : 'Out of Stock'}
               </span>
@@ -451,10 +457,10 @@ export default function ProductDetail() {
                   <details className="group" id="variant-dropdown">
                     {/* Selected variant display — acts as dropdown trigger */}
                     <summary
-                      className="flex items-center justify-between px-4 py-3.5 rounded-2xl
+                      className="flex items-center justify-between px-4 py-3.5
                                  cursor-pointer list-none transition-all"
                       style={{
-                        border: '2px solid var(--color-primary)',
+                        border: '1.5px solid var(--color-accent)',
                         backgroundColor: 'var(--color-soft)',
                       }}
                     >
@@ -487,7 +493,7 @@ export default function ProductDetail() {
                     </summary>
 
                     {/* Dropdown options */}
-                    <div className="absolute left-0 right-0 z-20 mt-2 rounded-2xl overflow-hidden"
+                    <div className="absolute left-0 right-0 z-20 mt-2 overflow-hidden"
                          style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.12)', backgroundColor: 'white', border: '1px solid var(--color-soft)' }}>
                       {product.variants.map((v, i) => {
                         const active      = selectedVariant?.label === v.label;
@@ -574,11 +580,10 @@ export default function ProductDetail() {
               <p className="text-xs font-semibold uppercase tracking-widest mb-3"
                  style={{ color: 'var(--color-muted)' }}>Quantity</p>
               <div className="flex items-center gap-3">
-                <div className="flex items-center rounded-full overflow-hidden"
-                     style={{ border: '1.5px solid var(--color-soft)' }}>
+                <div className="flex items-center"
+                     style={{ border: '1px solid var(--color-soft)' }}>
                   <button onClick={() => setQuantity(q => Math.max(1, q - 1))}
-                    className="w-10 h-10 flex items-center justify-center
-                               transition-colors hover:bg-soft"
+                    className="w-10 h-10 flex items-center justify-center transition-colors"
                     style={{ color: 'var(--color-dark)' }}>
                     <FiMinus size={14} />
                   </button>
@@ -612,35 +617,36 @@ export default function ProductDetail() {
                                                       `Bundle ₹${offer.discountValue}`;
                   return (
                     <div key={offer._id}
-                         className="flex items-start gap-3 p-3.5 rounded-2xl"
-                         style={{ backgroundColor: '#f0fdf4', border: '1.5px solid #bbf7d0' }}>
+                         className="flex items-start gap-3 p-4"
+                         style={{ backgroundColor: 'var(--color-soft)', borderLeft: '2px solid var(--color-accent)' }}>
                       <span className="text-lg shrink-0">🎁</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-sm font-semibold" style={{ color: '#15803d' }}>
+                          <p className="text-sm font-semibold" style={{ color: 'var(--color-dark)' }}>
                             {offer.name}
                           </p>
-                          <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-green-600 text-white">
+                          <span className="px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white"
+                                style={{ backgroundColor: 'var(--color-dark)' }}>
                             {offer.badge || discountLabel}
                           </span>
                         </div>
                         {offer.description && (
-                          <p className="text-xs mt-0.5" style={{ color: '#166534' }}>
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--color-muted)' }}>
                             {offer.description}
                           </p>
                         )}
                         {otherProducts.length > 0 && (
                           <div className="flex items-center gap-2 mt-2 flex-wrap">
-                            <span className="text-xs" style={{ color: '#166534' }}>Bundle with:</span>
+                            <span className="text-xs" style={{ color: 'var(--color-muted)' }}>Bundle with:</span>
                             {otherProducts.map((p, i) => (
-                              <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white"
-                                   style={{ border: '1px solid #bbf7d0' }}>
+                              <div key={i} className="flex items-center gap-1.5 px-2 py-1 bg-white"
+                                   style={{ border: '1px solid var(--color-soft)' }}>
                                 {p.product?.image && (
                                   <img src={p.product.image} alt=""
-                                       className="w-5 h-5 rounded object-cover shrink-0" />
+                                       className="w-5 h-5 object-cover shrink-0" />
                                 )}
                                 <span className="text-xs font-medium truncate max-w-[120px]"
-                                      style={{ color: '#15803d' }}>
+                                      style={{ color: 'var(--color-dark)' }}>
                                   {p.product?.name || 'Product'}
                                   {p.variantLabel && ` · ${p.variantLabel}`}
                                 </span>
@@ -661,9 +667,9 @@ export default function ProductDetail() {
                 onClick={handleAddToCart}
                 disabled={!inStock}
                 className="flex-1 flex items-center justify-center gap-2 py-3.5
-                           rounded-full text-sm font-medium text-white transition-all
+                           text-sm font-medium uppercase tracking-wider text-white transition-all
                            duration-300 disabled:opacity-40 disabled:cursor-not-allowed"
-                style={{ backgroundColor: added ? '#22c55e' : 'var(--color-primary)' }}>
+                style={{ backgroundColor: added ? '#22c55e' : 'var(--color-dark)' }}>
                 {added
                   ? <><FiCheck size={16} /> Added!</>
                   : <><FiShoppingCart size={16} /> Add to Cart</>}
@@ -673,7 +679,7 @@ export default function ProductDetail() {
                 className="w-12 h-12 rounded-full flex items-center justify-center
                            transition-all duration-200 hover:scale-110 shrink-0"
                 style={{
-                  backgroundColor: wishlisted ? '#FEF3E2' : 'var(--color-soft)',
+                  backgroundColor: wishlisted ? 'var(--color-soft)' : 'transparent',
                   border: wishlisted
                     ? '1.5px solid var(--color-accent)'
                     : '1.5px solid var(--color-soft)',
@@ -688,11 +694,11 @@ export default function ProductDetail() {
             <button
               onClick={() => { handleAddToCart(); navigate('/cart'); }}
               disabled={!inStock}
-              className="w-full py-3.5 rounded-full text-sm font-medium
+              className="w-full py-3.5 text-sm font-medium uppercase tracking-wider
                          transition-all disabled:opacity-40"
               style={{
-                border: '1.5px solid var(--color-primary)',
-                color: 'var(--color-primary)',
+                border: '1.5px solid var(--color-dark)',
+                color: 'var(--color-dark)',
               }}>
               Buy Now
             </button>
@@ -700,33 +706,29 @@ export default function ProductDetail() {
           </div>
         </div>
 
-        {/* Tabs */}
+        {/* Tabs — hairline underline tab bar instead of pill switcher */}
         <div className="mb-10">
-          <div className="flex gap-1 p-1 rounded-2xl w-fit mb-8 overflow-x-auto"
-               style={{ backgroundColor: 'var(--color-soft)' }}>
+          <div className="flex gap-8 mb-8 overflow-x-auto" style={{ borderBottom: '1px solid var(--color-soft)' }}>
             {[
               { key: 'description', label: 'Description' },
               { key: 'reviews',     label: `Reviews (${product.numReviews})` },
-              // { key: 'how-to',      label: 'How to Use'  },
               { key: 'return',      label: 'Return Policy' },
             ].map(({ key, label }) => (
               <button key={key} onClick={() => setActiveTab(key)}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium
-                           transition-all duration-200 whitespace-nowrap"
-                style={{
-                  backgroundColor: activeTab === key ? 'white' : 'transparent',
-                  color: activeTab === key ? 'var(--color-primary)' : 'var(--color-muted)',
-                  boxShadow: activeTab === key ? 'var(--shadow-card)' : 'none',
-                }}>
+                className="relative pb-4 text-sm font-medium whitespace-nowrap transition-colors"
+                style={{ color: activeTab === key ? 'var(--color-dark)' : 'var(--color-muted)' }}>
                 {label}
+                {activeTab === key && (
+                  <span className="absolute left-0 right-0 -bottom-px h-0.5"
+                        style={{ backgroundColor: 'var(--color-accent)' }} />
+                )}
               </button>
             ))}
           </div>
 
           {/* Description Tab */}
           {activeTab === 'description' && (
-            <div className="bg-white rounded-2xl p-6"
-                 style={{ boxShadow: 'var(--shadow-card)' }}>
+            <div className="bg-white p-6" style={{ boxShadow: 'var(--shadow-card)', borderTop: '2px solid var(--color-accent)' }}>
               <h3 className="text-lg font-semibold mb-4"
                   style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
                 About this product
@@ -735,16 +737,15 @@ export default function ProductDetail() {
                  style={{ color: 'var(--color-muted)' }}>
                 {product.description}
               </p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-px" style={{ backgroundColor: 'var(--color-soft)' }}>
                 {[
                   { label: 'Brand',    value: product.brand },
                   { label: 'Category', value: product.category },
                   { label: 'Stock',    value: `${product.stock} units` },
                   { label: 'Rating',   value: `${product.rating?.toFixed(1)} / 5` },
                 ].map(({ label, value }) => (
-                  <div key={label} className="p-3 rounded-xl text-center"
-                       style={{ backgroundColor: 'var(--color-soft)' }}>
-                    <p className="text-xs mb-1" style={{ color: 'var(--color-muted)' }}>
+                  <div key={label} className="p-4 text-center bg-white">
+                    <p className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--color-muted)' }}>
                       {label}
                     </p>
                     <p className="text-sm font-semibold capitalize"
@@ -758,8 +759,7 @@ export default function ProductDetail() {
           {/* Reviews Tab */}
           {activeTab === 'reviews' && (
             <div className="space-y-5">
-              <div className="bg-white rounded-2xl p-6"
-                   style={{ boxShadow: 'var(--shadow-card)' }}>
+              <div className="bg-white p-6" style={{ boxShadow: 'var(--shadow-card)', borderTop: '2px solid var(--color-accent)' }}>
                 <div className="flex flex-col md:flex-row gap-8 items-start">
                   <div className="text-center shrink-0">
                     <p className="text-6xl font-semibold mb-2"
@@ -779,9 +779,9 @@ export default function ProductDetail() {
                               style={{ color: 'var(--color-muted)' }}>{star}</span>
                         <FiStar size={11} fill="var(--color-accent)"
                                 color="var(--color-accent)" />
-                        <div className="flex-1 h-2 rounded-full overflow-hidden"
+                        <div className="flex-1 h-1 overflow-hidden"
                              style={{ backgroundColor: 'var(--color-soft)' }}>
-                          <div className="h-full rounded-full transition-all duration-500"
+                          <div className="h-full transition-all duration-500"
                                style={{ width: `${pct}%`,
                                         backgroundColor: 'var(--color-accent)' }} />
                         </div>
@@ -794,10 +794,9 @@ export default function ProductDetail() {
               </div>
 
               {userInfo ? (
-                <div className="bg-white rounded-2xl p-6"
-                     style={{ boxShadow: 'var(--shadow-card)' }}>
-                  <h4 className="text-base font-semibold mb-4"
-                      style={{ color: 'var(--color-dark)' }}>Write a Review</h4>
+                <div className="bg-white p-6" style={{ boxShadow: 'var(--shadow-card)' }}>
+                  <p className="text-xs font-medium uppercase tracking-[0.2em] mb-5"
+                     style={{ color: 'var(--color-dark)' }}>Write a Review</p>
                   <form onSubmit={handleReview} className="space-y-4">
                     <div>
                       <p className="text-xs font-medium mb-2"
@@ -816,16 +815,15 @@ export default function ProductDetail() {
                         className="input resize-none" />
                     </div>
                     <button type="submit" disabled={submitting}
-                      className="px-6 py-2.5 rounded-full text-sm font-medium
+                      className="px-6 py-2.5 text-xs font-medium uppercase tracking-wider
                                  text-white disabled:opacity-60 transition-all"
-                      style={{ backgroundColor: 'var(--color-primary)' }}>
+                      style={{ backgroundColor: 'var(--color-dark)' }}>
                       {submitting ? 'Submitting...' : 'Submit Review'}
                     </button>
                   </form>
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl p-6 text-center"
-                     style={{ boxShadow: 'var(--shadow-card)' }}>
+                <div className="bg-white p-6 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
                   <p className="text-sm mb-3" style={{ color: 'var(--color-muted)' }}>
                     Login to leave a review
                   </p>
@@ -834,8 +832,7 @@ export default function ProductDetail() {
               )}
 
               {product.reviews?.length === 0 ? (
-                <div className="bg-white rounded-2xl p-10 text-center"
-                     style={{ boxShadow: 'var(--shadow-card)' }}>
+                <div className="bg-white p-12 text-center" style={{ boxShadow: 'var(--shadow-card)' }}>
                   <p className="text-4xl mb-3">💬</p>
                   <p className="text-sm" style={{ color: 'var(--color-muted)' }}>
                     No reviews yet — be the first!
@@ -844,13 +841,12 @@ export default function ProductDetail() {
               ) : (
                 <div className="space-y-4">
                   {product.reviews?.map(review => (
-                    <div key={review._id} className="bg-white rounded-2xl p-5"
-                         style={{ boxShadow: 'var(--shadow-card)' }}>
+                    <div key={review._id} className="bg-white p-5" style={{ boxShadow: 'var(--shadow-card)' }}>
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full flex items-center
                                           justify-center text-sm font-bold text-white shrink-0"
-                               style={{ backgroundColor: 'var(--color-primary)' }}>
+                               style={{ backgroundColor: 'var(--color-dark)' }}>
                             {review.name?.charAt(0).toUpperCase()}
                           </div>
                           <div>
@@ -878,49 +874,9 @@ export default function ProductDetail() {
             </div>
           )}
 
-          {/* How to Use Tab */}
-          {activeTab === 'how-to' && (
-            <div className="bg-white rounded-2xl p-6"
-                 style={{ boxShadow: 'var(--shadow-card)' }}>
-              <h3 className="text-lg font-semibold mb-6"
-                  style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
-                How to Use
-              </h3>
-              <div className="space-y-5">
-                {[
-                  { step: '01', title: 'Prepare',
-                    desc: 'Start with clean, slightly damp hair for best absorption.' },
-                  { step: '02', title: 'Apply',
-                    desc: 'Take a small amount and distribute evenly, focusing on ends.' },
-                  { step: '03', title: 'Massage',
-                    desc: 'Gently massage into scalp using circular motions.' },
-                  { step: '04', title: 'Wait',
-                    desc: 'Leave on for 30 minutes, or overnight for deep conditioning.' },
-                  { step: '05', title: 'Rinse',
-                    desc: 'Wash off thoroughly with gentle shampoo and lukewarm water.' },
-                ].map(({ step, title, desc }) => (
-                  <div key={step} className="flex gap-4 items-start">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center
-                                    text-xs font-bold text-white shrink-0"
-                         style={{ backgroundColor: 'var(--color-primary)' }}>
-                      {step}
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold mb-1"
-                         style={{ color: 'var(--color-dark)' }}>{title}</p>
-                      <p className="text-sm leading-relaxed"
-                         style={{ color: 'var(--color-muted)' }}>{desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* ── RETURN POLICY TAB — fully dynamic ── */}
           {activeTab === 'return' && (
-            <div className="bg-white rounded-2xl p-6"
-                 style={{ boxShadow: 'var(--shadow-card)' }}>
+            <div className="bg-white p-6" style={{ boxShadow: 'var(--shadow-card)', borderTop: '2px solid var(--color-accent)' }}>
               <h3 className="text-lg font-semibold mb-6"
                   style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
                 Return Policy
@@ -930,11 +886,10 @@ export default function ProductDetail() {
                 <div className="space-y-5">
 
                   {/* Eligible badge */}
-                  <div className="flex items-center gap-3 p-4 rounded-2xl"
-                       style={{ backgroundColor: '#F0FDF4' }}>
-                    <div className="w-10 h-10 rounded-full bg-green-500 flex items-center
-                                    justify-center shrink-0">
-                      <FiRefreshCw size={18} color="white" />
+                  <div className="flex items-center gap-3 p-4" style={{ backgroundColor: '#F0FDF4' }}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                         style={{ border: '1.5px solid #22c55e' }}>
+                      <FiRefreshCw size={16} color="#22c55e" />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-green-700">
@@ -948,8 +903,7 @@ export default function ProductDetail() {
 
                   {/* Policy note */}
                   {product.returnPolicy.description && (
-                    <div className="p-4 rounded-xl"
-                         style={{ backgroundColor: 'var(--color-soft)' }}>
+                    <div className="p-4" style={{ backgroundColor: 'var(--color-soft)' }}>
                       <p className="text-xs font-semibold uppercase tracking-widest mb-1"
                          style={{ color: 'var(--color-muted)' }}>Policy Note</p>
                       <p className="text-sm" style={{ color: 'var(--color-dark)' }}>
@@ -994,8 +948,8 @@ export default function ProductDetail() {
                       ].map(({ step, title, desc }) => (
                         <div key={step} className="flex gap-4 items-start">
                           <div className="w-8 h-8 rounded-full flex items-center
-                                          justify-center text-xs font-bold text-white shrink-0"
-                               style={{ backgroundColor: '#22c55e' }}>
+                                          justify-center text-xs font-bold shrink-0"
+                               style={{ border: '1.5px solid var(--color-accent)', color: 'var(--color-accent)' }}>
                             {step}
                           </div>
                           <div>
@@ -1010,8 +964,7 @@ export default function ProductDetail() {
                   </div>
 
                   {/* Return window highlight */}
-                  <div className="p-4 rounded-xl flex items-center gap-3"
-                       style={{ backgroundColor: 'var(--color-soft)' }}>
+                  <div className="p-4 flex items-center gap-3" style={{ backgroundColor: 'var(--color-soft)' }}>
                     <FiPackage size={18} style={{ color: 'var(--color-primary)' }} />
                     <p className="text-sm" style={{ color: 'var(--color-dark)' }}>
                       You have{' '}
@@ -1026,11 +979,10 @@ export default function ProductDetail() {
               ) : (
                 /* Non-returnable */
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-4 rounded-2xl"
-                       style={{ backgroundColor: '#FEF2F2' }}>
-                    <div className="w-10 h-10 rounded-full bg-red-500 flex items-center
-                                    justify-center shrink-0">
-                      <FiX size={18} color="white" />
+                  <div className="flex items-center gap-3 p-4" style={{ backgroundColor: '#FEF2F2' }}>
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
+                         style={{ border: '1.5px solid #ef4444' }}>
+                      <FiX size={16} color="#ef4444" />
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-red-600">
@@ -1043,8 +995,7 @@ export default function ProductDetail() {
                   </div>
 
                   {product.returnPolicy.description && (
-                    <div className="p-4 rounded-xl"
-                         style={{ backgroundColor: 'var(--color-soft)' }}>
+                    <div className="p-4" style={{ backgroundColor: 'var(--color-soft)' }}>
                       <p className="text-xs font-semibold uppercase tracking-widest mb-1"
                          style={{ color: 'var(--color-muted)' }}>Reason</p>
                       <p className="text-sm" style={{ color: 'var(--color-dark)' }}>
@@ -1053,8 +1004,7 @@ export default function ProductDetail() {
                     </div>
                   )}
 
-                  <div className="p-4 rounded-xl"
-                       style={{ backgroundColor: 'var(--color-soft)' }}>
+                  <div className="p-4" style={{ backgroundColor: 'var(--color-soft)' }}>
                     <p className="text-xs font-semibold uppercase tracking-widest mb-2"
                        style={{ color: 'var(--color-muted)' }}>
                       Still have issues?
@@ -1073,35 +1023,34 @@ export default function ProductDetail() {
         {/* Related Products */}
         {related.length > 0 && (
           <div className="pb-16">
-            <div className="flex items-end justify-between mb-6">
-              <div>
-                <p className="text-xs font-medium mb-1 uppercase tracking-widest"
-                   style={{ color: 'var(--color-accent)' }}>You may also like</p>
-                <h2 className="text-2xl font-semibold"
-                    style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
-                  Related Products
-                </h2>
-              </div>
+            <div className="flex items-end justify-between mb-8">
+              <Eyebrow>You may also like</Eyebrow>
               <Link to={`/products?category=${product.category}`}
-                    className="text-sm" style={{ color: 'var(--color-primary)' }}>
+                    className="text-sm hidden sm:block" style={{ color: 'var(--color-primary)' }}>
                 View all →
               </Link>
             </div>
+            <h2 className="text-2xl font-semibold -mt-4 mb-6"
+                style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
+              Related Products
+            </h2>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-5">
               {related.map(p => (
                 <Link key={p._id} to={`/products/${p._id}`}
-                      className="bg-white rounded-2xl overflow-hidden group
-                                 transition-all duration-300 hover:-translate-y-1"
-                      style={{ boxShadow: 'var(--shadow-card)' }}>
+                      className="group relative bg-white overflow-hidden
+                                 transition-all duration-500 hover:-translate-y-1.5"
+                      style={{ boxShadow: 'var(--shadow-card)', borderTop: '2px solid transparent' }}
+                      onMouseEnter={e => { e.currentTarget.style.borderTopColor = 'var(--color-accent)'; e.currentTarget.style.boxShadow = 'var(--shadow-soft)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderTopColor = 'transparent'; e.currentTarget.style.boxShadow = 'var(--shadow-card)'; }}>
                   <div className="aspect-square overflow-hidden"
                        style={{ backgroundColor: 'var(--color-soft)' }}>
                     <img src={p.image} alt={p.name}
                          className="w-full h-full object-cover group-hover:scale-105
-                                    transition-transform duration-500" />
+                                    transition-transform duration-700" />
                   </div>
                   <div className="p-3">
-                    <p className="text-xs mb-0.5"
+                    <p className="text-[10px] uppercase tracking-wide mb-0.5"
                        style={{ color: 'var(--color-muted)' }}>{p.brand}</p>
                     <p className="text-xs font-semibold line-clamp-2 mb-1"
                        style={{ color: 'var(--color-dark)' }}>{p.name}</p>
