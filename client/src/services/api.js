@@ -1,7 +1,14 @@
 import axios from 'axios';
 
+// Strip trailing slashes and collapse accidental "//api" into "/api"
+const cleanBase = (url) =>
+  String(url || '')
+    .trim()
+    .replace(/([^:])\/{2,}/g, '$1/')
+    .replace(/\/+$/, '');
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'https://my-raaz-ecommerce.vercel.app/api',
+  baseURL: cleanBase(import.meta.env.VITE_API_URL) || 'https://myraaz.onrender.com/api',
   withCredentials: true,
 });
 
