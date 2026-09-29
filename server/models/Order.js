@@ -49,6 +49,8 @@ const orderSchema = new mongoose.Schema(
       email_address: String,
     },
 
+    razorpayOrderId: { type: String, index: true }, // links webhook events to this order
+
     isPaid:      { type: Boolean, default: false },
     paidAt:      { type: Date },
     isDelivered: { type: Boolean, default: false },

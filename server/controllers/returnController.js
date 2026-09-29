@@ -12,6 +12,7 @@ const Product  = require('../models/Product');
 const User     = require('../models/User');
 const { checkFraud }                           = require('../services/fraudService');
 const { processRefund, calculateRefundAmount } = require('../services/refundService');
+const { verifyWebhookSignature } = require('../utils/razorpaySignature');
 
 /* ─────────────────────────────────────────
    GET /api/returns/eligibility/:orderId
@@ -352,22 +353,9 @@ const getMyReturns = async (req, res) => {
 ───────────────────────────────────────── */
 const handleRazorpayWebhook = async (req, res) => {
   try {
-    const secret    = process.env.RAZORPAY_WEBHOOK_SECRET;
-    const signature = req.headers['x-razorpay-signature'];
-    const rawBody   = req.body;
-
-    if (secret) {
-      if (!signature)
-        return res.status(400).json({ message: 'Missing webhook signature' });
-
-      const expected = crypto
-        .createHmac('sha256', secret)
-        .update(rawBody)
-        .digest('hex');
-
-      if (expected !== signature)
-        return res.status(400).json({ message: 'Invalid webhook signature' });
-    }
+    const rawBody = req.body;
+    const check   = verifyWebhookSignature(rawBody, req.headers['x-razorpay-signature']);
+    if (!check.ok) return res.status(check.status).json({ message: check.message });
 
     const { event, payload } = JSON.parse(rawBody.toString());
     console.log('Return webhook event:', event);
