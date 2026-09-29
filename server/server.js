@@ -27,7 +27,7 @@ const app = express();
 const allowedOrigins = [
   'https://www.myraaz.in',
   'https://myraaz.in',
-  'https://myraaz.vercel.app/',
+  'https://myraaz.vercel.app',
   'http://localhost:5173',
 ];
 
