@@ -1,24 +1,37 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import {
   FiPlus, FiEdit2, FiTrash2, FiSearch,
   FiBox, FiAlertCircle, FiTrendingUp, FiUsers,
-  FiShoppingCart, FiEye, FiHome, FiMenu, FiX, FiTag,
+  FiShoppingCart, FiEye, FiHome, FiTag,
   FiPackage
 } from 'react-icons/fi';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
 
+/* ── Eyebrow — flanked-line label used across the site ── */
+const Eyebrow = ({ children }) => (
+  <div className="flex items-center gap-2.5">
+    <span style={{ width: '18px', height: '1px', backgroundColor: 'var(--color-accent)' }} />
+    <p className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-accent)' }}>
+      {children}
+    </p>
+  </div>
+);
+
+/* ── Sidebar link — hairline indicator, matches Dashboard/Users ── */
 const SideLink = ({ to, icon, label, active }) => (
   <Link
     to={to}
-    className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all"
-    style={{
-      backgroundColor: active ? 'var(--color-primary)' : 'transparent',
-      color: active ? 'white' : 'var(--color-muted)',
-    }}
+    className="group flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-150"
+    style={{ color: active ? 'var(--color-dark)' : 'var(--color-muted)', fontWeight: active ? 600 : 400 }}
   >
-    {icon} {label}
+    <span
+      className={`block h-px transition-all duration-300 ${active ? 'w-3' : 'w-0 group-hover:w-3'}`}
+      style={{ backgroundColor: 'var(--color-accent)' }}
+    />
+    <span style={{ color: active ? 'var(--color-accent)' : 'var(--color-muted)' }}>{icon}</span>
+    {label}
   </Link>
 );
 
@@ -28,17 +41,17 @@ const NAV_LINKS = [
   { to: '/admin/orders',     icon: <FiShoppingCart size={16} />, label: 'Orders'     },
   { to: '/admin/users',      icon: <FiUsers size={16} />,        label: 'Users'      },
   { to: '/admin/coupons',    icon: <FiTag size={16} />,          label: 'Coupons'    },
-  { to:"/admin/returns"  ,   icon:<FiPackage size={16} />,      label:"Returns"  },
+  { to: '/admin/returns',    icon: <FiPackage size={16} />,      label: 'Returns'    },
   { to: '/admin/home-media', icon: <FiHome size={16} />,         label: 'Home Media' },
 ];
 
 export default function AdminProducts() {
+  const { pathname }                = useLocation();
   const [products, setProducts]     = useState([]);
   const [loading, setLoading]       = useState(true);
   const [search, setSearch]         = useState('');
   const [deleting, setDeleting]     = useState(null);
   const [filterCat, setFilterCat]   = useState('');
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const categories = ['', 'hair-oil', 'shampoo', 'conditioner', 'hair-mask', 'serum'];
 
@@ -79,84 +92,42 @@ export default function AdminProducts() {
   return (
     <div className="flex min-h-screen" style={{ backgroundColor: 'var(--color-cream)' }}>
 
-      {/* ── Mobile drawer backdrop ── */}
-      {drawerOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/30 lg:hidden"
-          onClick={() => setDrawerOpen(false)}
-        />
-      )}
+      {/* ── SIDEBAR (desktop only — mobile uses the shared AdminMobileBottomNav) ── */}
+      <aside className="hidden lg:flex flex-col w-56 bg-white sticky top-16 h-[calc(100vh-64px)]
+                        border-r py-8 px-4 gap-1"
+             style={{ borderColor: 'var(--color-soft)' }}>
 
-      {/* ── Sidebar (desktop) + Drawer (mobile) ── */}
-      <aside
-        className={`
-          fixed lg:sticky top-0 lg:top-16 z-40 lg:z-auto
-          flex flex-col w-64 lg:w-56 bg-white
-          h-screen lg:h-[calc(100vh-64px)]
-          border-r py-6 px-3 gap-1
-          transition-transform duration-300
-          ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}
-          lg:translate-x-0 lg:flex
-        `}
-        style={{ borderColor: 'var(--color-soft)' }}
-      >
-        {/* Close btn – mobile only */}
-        <button
-          className="lg:hidden self-end mb-2 p-1 rounded-lg"
-          style={{ color: 'var(--color-muted)' }}
-          onClick={() => setDrawerOpen(false)}
-        >
-          <FiX size={20} />
-        </button>
-
-        <div className="px-4 mb-6">
-          <p className="text-xs font-semibold uppercase tracking-widest"
-             style={{ color: 'var(--color-muted)' }}>Admin Panel</p>
-          <p className="text-base font-semibold mt-0.5"
+        <div className="px-4 mb-8">
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-accent)' }}>
+            Admin Panel
+          </p>
+          <p className="text-base font-semibold mt-1"
              style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>myRaaz</p>
         </div>
 
-        <p className="px-4 text-xs font-semibold uppercase tracking-widest mb-1"
-           style={{ color: 'var(--color-muted)' }}>Overview</p>
+        <p className="px-4 text-[10px] font-medium uppercase tracking-[0.2em] mb-2"
+           style={{ color: 'var(--color-accent)' }}>Overview</p>
 
         {NAV_LINKS.map(({ to, icon, label }) => (
-          <SideLink
-            key={to} to={to} icon={icon} label={label}
-            active={to === '/admin/products'}
-          />
+          <SideLink key={to} to={to} icon={icon} label={label} active={pathname === to} />
         ))}
 
-        <div className="mt-auto px-4">
-          <Link to="/" className="flex items-center gap-2 text-xs"
+        <div className="mt-auto px-4 pt-4" style={{ borderTop: '1px solid var(--color-soft)' }}>
+          <Link to="/" className="flex items-center gap-2 text-xs transition-colors hover:opacity-80"
                 style={{ color: 'var(--color-muted)' }}>
             <FiEye size={13} /> View Store
           </Link>
         </div>
       </aside>
 
-      {/* ── Main content ── */}
-      <main className="flex-1 p-4 lg:p-6 min-w-0">
-
-        {/* ── Mobile top bar ── */}
-        <div className="flex items-center gap-3 mb-5 lg:hidden">
-          <button
-            onClick={() => setDrawerOpen(true)}
-            className="p-2 rounded-xl"
-            style={{ backgroundColor: 'white', color: 'var(--color-dark)',
-                     boxShadow: 'var(--shadow-card)' }}
-          >
-            <FiMenu size={18} />
-          </button>
-          <p className="text-base font-semibold"
-             style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
-            myRaaz Admin
-          </p>
-        </div>
+      {/* ── Main content — pb-24 on mobile so content clears the fixed bottom nav ── */}
+      <main className="flex-1 p-4 lg:p-6 pb-24 lg:pb-6 min-w-0">
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>
-            <h1 className="text-2xl font-semibold"
+            <Eyebrow>Catalogue</Eyebrow>
+            <h1 className="text-2xl font-semibold mt-2"
                 style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
               Products
             </h1>
@@ -166,29 +137,32 @@ export default function AdminProducts() {
           </div>
           <Link
             to="/admin/products/add"
-            className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-full
-                       text-white text-sm font-medium transition-all hover:opacity-90 w-fit"
-            style={{ backgroundColor: 'var(--color-primary)' }}
+            className="flex items-center justify-center gap-2 px-6 py-3
+                       text-white text-xs font-medium uppercase tracking-wider transition-all hover:opacity-90 w-fit"
+            style={{ backgroundColor: 'var(--color-dark)' }}
           >
             <FiPlus size={15} /> Add Product
           </Link>
         </div>
 
         {/* Search + Filter */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
           <div className="relative flex-1">
-            <FiSearch size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2"
+            <FiSearch size={15} className="absolute left-1 top-1/2 -translate-y-1/2"
                       style={{ color: 'var(--color-muted)' }} />
             <input
               type="text" placeholder="Search products..."
               value={search} onChange={e => setSearch(e.target.value)}
-              className="input pl-10 text-sm w-full"
+              className="w-full pl-7 pr-2 py-2.5 text-sm bg-transparent focus:outline-none"
+              style={{ borderBottom: '1.5px solid var(--color-soft)', color: 'var(--color-dark)' }}
+              onFocus={e => e.currentTarget.style.borderBottomColor = 'var(--color-accent)'}
+              onBlur={e => e.currentTarget.style.borderBottomColor = 'var(--color-soft)'}
             />
           </div>
           <select
             value={filterCat} onChange={e => setFilterCat(e.target.value)}
-            className="input text-sm sm:w-44"
-            style={{ color: 'var(--color-dark)' }}
+            className="text-sm sm:w-44 py-2.5 bg-transparent focus:outline-none"
+            style={{ color: 'var(--color-dark)', borderBottom: '1.5px solid var(--color-soft)' }}
           >
             {categories.map(c => (
               <option key={c} value={c}>{c ? c : 'All Categories'}</option>
@@ -197,13 +171,12 @@ export default function AdminProducts() {
         </div>
 
         {/* Table / Cards */}
-        <div className="bg-white rounded-2xl overflow-hidden"
-             style={{ boxShadow: 'var(--shadow-card)' }}>
+        <div className="bg-white overflow-hidden" style={{ boxShadow: 'var(--shadow-card)', borderTop: '2px solid var(--color-accent)' }}>
           {loading ? (
             <div className="p-6 space-y-4">
               {[...Array(6)].map((_, i) => (
                 <div key={i} className="flex gap-4 animate-pulse items-center">
-                  <div className="w-14 h-14 rounded-xl shrink-0"
+                  <div className="w-14 h-14 shrink-0"
                        style={{ backgroundColor: 'var(--color-soft)' }} />
                   <div className="flex-1 space-y-2">
                     <div className="h-3 w-40 rounded-full" style={{ backgroundColor: 'var(--color-soft)' }} />
@@ -214,7 +187,10 @@ export default function AdminProducts() {
             </div>
           ) : products.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center px-4">
-              <FiAlertCircle size={36} style={{ color: 'var(--color-muted)' }} className="mb-3" />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                   style={{ border: '1px solid var(--color-accent)' }}>
+                <FiAlertCircle size={26} style={{ color: 'var(--color-accent)' }} />
+              </div>
               <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-dark)' }}>
                 No products found
               </p>
@@ -232,7 +208,7 @@ export default function AdminProducts() {
                     <tr style={{ borderBottom: '1px solid var(--color-soft)' }}>
                       {['Product', 'Category', 'Price', 'Stock', 'Rating', 'Actions'].map(h => (
                         <th key={h}
-                            className="text-left px-5 py-3.5 text-xs font-semibold uppercase tracking-widest"
+                            className="text-left px-5 py-3.5 text-[10px] font-medium uppercase tracking-[0.15em]"
                             style={{ color: 'var(--color-muted)' }}>{h}</th>
                       ))}
                     </tr>
@@ -245,7 +221,7 @@ export default function AdminProducts() {
 
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0"
+                            <div className="w-12 h-12 overflow-hidden shrink-0"
                                  style={{ backgroundColor: 'var(--color-soft)' }}>
                               <img src={product.image} alt={product.name}
                                    className="w-full h-full object-cover" />
@@ -261,8 +237,7 @@ export default function AdminProducts() {
                         </td>
 
                         <td className="px-5 py-3.5">
-                          <span className="px-2.5 py-1 rounded-full text-xs capitalize"
-                                style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-primary)' }}>
+                          <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--color-accent)' }}>
                             {product.category}
                           </span>
                         </td>
@@ -290,21 +265,21 @@ export default function AdminProducts() {
                         </td>
 
                         <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1">
                             <Link to={`/products/${product._id}`}
-                                  className="p-2 rounded-xl transition-all hover:bg-soft"
+                                  className="p-2 transition-all hover:bg-soft"
                                   style={{ color: 'var(--color-muted)' }} title="View">
                               <FiEye size={15} />
                             </Link>
                             <Link to={`/admin/products/edit/${product._id}`}
-                                  className="p-2 rounded-xl transition-all hover:bg-blue-50"
+                                  className="p-2 transition-all hover:bg-blue-50"
                                   style={{ color: '#3B82F6' }} title="Edit">
                               <FiEdit2 size={15} />
                             </Link>
                             <button
                               onClick={() => handleDelete(product._id, product.name)}
                               disabled={deleting === product._id}
-                              className="p-2 rounded-xl transition-all hover:bg-red-50 disabled:opacity-40"
+                              className="p-2 transition-all hover:bg-red-50 disabled:opacity-40"
                               style={{ color: '#EF4444' }} title="Delete">
                               <FiTrash2 size={15} />
                             </button>
@@ -321,7 +296,7 @@ export default function AdminProducts() {
                 {products.map(product => (
                   <div key={product._id} className="p-4 flex items-start gap-3">
                     {/* Image */}
-                    <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0"
+                    <div className="w-16 h-16 overflow-hidden shrink-0"
                          style={{ backgroundColor: 'var(--color-soft)' }}>
                       <img src={product.image} alt={product.name}
                            className="w-full h-full object-cover" />
@@ -336,8 +311,7 @@ export default function AdminProducts() {
                       </p>
 
                       <div className="flex flex-wrap gap-2 items-center">
-                        <span className="px-2 py-0.5 rounded-full text-xs capitalize"
-                              style={{ backgroundColor: 'var(--color-soft)', color: 'var(--color-primary)' }}>
+                        <span className="text-xs uppercase tracking-wide" style={{ color: 'var(--color-accent)' }}>
                           {product.category}
                         </span>
                         <span className="font-semibold text-sm"
@@ -358,19 +332,19 @@ export default function AdminProducts() {
                     {/* Actions */}
                     <div className="flex flex-col gap-1 shrink-0">
                       <Link to={`/products/${product._id}`}
-                            className="p-2 rounded-xl transition-all hover:bg-soft"
+                            className="p-2 transition-all hover:bg-soft"
                             style={{ color: 'var(--color-muted)' }}>
                         <FiEye size={15} />
                       </Link>
                       <Link to={`/admin/products/edit/${product._id}`}
-                            className="p-2 rounded-xl transition-all hover:bg-blue-50"
+                            className="p-2 transition-all hover:bg-blue-50"
                             style={{ color: '#3B82F6' }}>
                         <FiEdit2 size={15} />
                       </Link>
                       <button
                         onClick={() => handleDelete(product._id, product.name)}
                         disabled={deleting === product._id}
-                        className="p-2 rounded-xl transition-all hover:bg-red-50 disabled:opacity-40"
+                        className="p-2 transition-all hover:bg-red-50 disabled:opacity-40"
                         style={{ color: '#EF4444' }}>
                         <FiTrash2 size={15} />
                       </button>

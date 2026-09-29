@@ -8,32 +8,43 @@ import {
 } from 'react-icons/fi';
 import api from '../../services/api';
 
-/* ── Status badge ── */
+/* ── Eyebrow — flanked-line label used across the site ── */
+const Eyebrow = ({ children }) => (
+  <div className="flex items-center gap-2.5">
+    <span style={{ width: '18px', height: '1px', backgroundColor: 'var(--color-accent)' }} />
+    <p className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-accent)' }}>
+      {children}
+    </p>
+  </div>
+);
+
+/* ── Status badge — outlined, keeps semantic color per status ── */
 const StatusBadge = ({ status }) => {
   const styles = {
-    pending:    { bg: '#FEF3C7', color: '#D97706', icon: <FiClock size={11} />       },
-    processing: { bg: '#DBEAFE', color: '#2563EB', icon: <FiPackage size={11} />     },
-    shipped:    { bg: '#E0E7FF', color: '#7C3AED', icon: <FiTruck size={11} />       },
-    delivered:  { bg: '#D1FAE5', color: '#059669', icon: <FiCheckCircle size={11} /> },
-    cancelled:  { bg: '#FEE2E2', color: '#DC2626', icon: <FiXCircle size={11} />     },
+    pending:    { color: '#D97706', icon: <FiClock size={11} />       },
+    processing: { color: '#2563EB', icon: <FiPackage size={11} />     },
+    shipped:    { color: '#7C3AED', icon: <FiTruck size={11} />       },
+    delivered:  { color: '#059669', icon: <FiCheckCircle size={11} /> },
+    cancelled:  { color: '#DC2626', icon: <FiXCircle size={11} />     },
   };
   const s = styles[status] || styles.pending;
   return (
-    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium w-fit"
-          style={{ backgroundColor: s.bg, color: s.color }}>
+    <span className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium uppercase tracking-wide w-fit"
+          style={{ border: `1px solid ${s.color}55`, color: s.color }}>
       {s.icon} {status}
     </span>
   );
 };
 
-/* ── Stat Card ── */
-const StatCard = ({ icon, label, value, sub, color, to }) => (
+/* ── Stat Card — outlined gold icon instead of a colored translucent box ── */
+const StatCard = ({ icon, label, value, sub, to }) => (
   <Link to={to}
-    className="bg-white rounded-2xl p-5 flex items-start justify-between
-               transition-all duration-300 hover:-translate-y-1 group"
-    style={{ boxShadow: 'var(--shadow-card)' }}>
+    className="group relative bg-white p-5 flex items-start justify-between transition-all duration-300"
+    style={{ boxShadow: 'var(--shadow-card)', borderTop: '2px solid transparent' }}
+    onMouseEnter={e => { e.currentTarget.style.borderTopColor = 'var(--color-accent)'; e.currentTarget.style.boxShadow = 'var(--shadow-soft)'; }}
+    onMouseLeave={e => { e.currentTarget.style.borderTopColor = 'transparent'; e.currentTarget.style.boxShadow = 'var(--shadow-card)'; }}>
     <div>
-      <p className="text-xs font-medium uppercase tracking-widest mb-3"
+      <p className="text-[10px] font-medium uppercase tracking-[0.18em] mb-3"
          style={{ color: 'var(--color-muted)' }}>{label}</p>
       <p className="text-3xl font-semibold mb-1"
          style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
@@ -41,9 +52,9 @@ const StatCard = ({ icon, label, value, sub, color, to }) => (
       </p>
       <p className="text-xs" style={{ color: 'var(--color-muted)' }}>{sub}</p>
     </div>
-    <div className="w-11 h-11 rounded-2xl flex items-center justify-center
+    <div className="w-11 h-11 rounded-full flex items-center justify-center shrink-0
                     transition-transform group-hover:scale-110"
-         style={{ backgroundColor: color + '18', color }}>
+         style={{ border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}>
       {icon}
     </div>
   </Link>
@@ -51,27 +62,27 @@ const StatCard = ({ icon, label, value, sub, color, to }) => (
 
 /* ── Skeleton ── */
 const SkeletonCard = () => (
-  <div className="bg-white rounded-2xl p-5 animate-pulse"
-       style={{ boxShadow: 'var(--shadow-card)' }}>
+  <div className="bg-white p-5 animate-pulse" style={{ boxShadow: 'var(--shadow-card)' }}>
     <div className="h-3 w-20 rounded-full mb-4" style={{ backgroundColor: 'var(--color-soft)' }} />
     <div className="h-8 w-24 rounded-full mb-2" style={{ backgroundColor: 'var(--color-soft)' }} />
     <div className="h-3 w-16 rounded-full"       style={{ backgroundColor: 'var(--color-soft)' }} />
   </div>
 );
 
-/* ── Sidebar link ── */
+/* ── Sidebar link — hairline indicator, matches UserDashboard ── */
 const SideLink = ({ to, icon, label }) => {
   const { pathname } = useLocation();
   const active = pathname === to;
   return (
     <Link to={to}
-      className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium
-                 transition-all duration-150"
-      style={{
-        backgroundColor: active ? 'var(--color-primary)' : 'transparent',
-        color: active ? 'white' : 'var(--color-muted)',
-      }}>
-      {icon} {label}
+      className="group flex items-center gap-3 px-4 py-2.5 text-sm transition-all duration-150"
+      style={{ color: active ? 'var(--color-dark)' : 'var(--color-muted)', fontWeight: active ? 600 : 400 }}>
+      <span
+        className={`block h-px transition-all duration-300 ${active ? 'w-3' : 'w-0 group-hover:w-3'}`}
+        style={{ backgroundColor: 'var(--color-accent)' }}
+      />
+      <span style={{ color: active ? 'var(--color-accent)' : 'var(--color-muted)' }}>{icon}</span>
+      {label}
     </Link>
   );
 };
@@ -99,22 +110,23 @@ export default function AdminDashboard() {
 
       {/* ── SIDEBAR (desktop only) ── */}
       <aside className="hidden lg:flex flex-col w-56 bg-white sticky top-16 h-[calc(100vh-64px)]
-                        border-r py-6 px-3 gap-1"
-             style={{ borderColor: 'var(--color-soft)', boxShadow: 'var(--shadow-card)' }}>
+                        border-r py-8 px-4 gap-1"
+             style={{ borderColor: 'var(--color-soft)' }}>
 
-        <div className="px-4 mb-6">
-          <p className="text-xs font-semibold uppercase tracking-widest"
-             style={{ color: 'var(--color-muted)' }}>Admin Panel</p>
-          <p className="text-base font-semibold mt-0.5"
+        <div className="px-4 mb-8">
+          <p className="text-[10px] font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-accent)' }}>
+            Admin Panel
+          </p>
+          <p className="text-base font-semibold mt-1"
              style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>myRaaz</p>
         </div>
 
-        <p className="px-4 text-xs font-semibold uppercase tracking-widest mb-1"
-           style={{ color: 'var(--color-muted)' }}>Overview</p>
+        <p className="px-4 text-[10px] font-medium uppercase tracking-[0.2em] mb-2"
+           style={{ color: 'var(--color-accent)' }}>Overview</p>
         <SideLink to="/admin"            icon={<FiTrendingUp size={16} />}   label="Dashboard"  />
 
-        {/* <p className="px-4 text-xs font-semibold uppercase tracking-widest mt-4 mb-1"
-           style={{ color: 'var(--color-muted)' }}>Manage</p> */}
+        <p className="px-4 text-[10px] font-medium uppercase tracking-[0.2em] mt-6 mb-2"
+           style={{ color: 'var(--color-accent)' }}>Manage</p>
         <SideLink to="/admin/products"   icon={<FiBox size={16} />}          label="Products"   />
         <SideLink to="/admin/orders"     icon={<FiShoppingCart size={16} />} label="Orders"     />
         <SideLink to="/admin/users"      icon={<FiUsers size={16} />}        label="Users"      />
@@ -124,7 +136,7 @@ export default function AdminDashboard() {
         <SideLink to="/admin/delivery"     icon={<FiTruck size={16} />}        label="Delivery"      />
         <SideLink to="/admin/combo-offers" icon={<FiGift size={16} />}         label="Combo Offers"  />
 
-        <div className="mt-auto px-4">
+        <div className="mt-auto px-4 pt-4" style={{ borderTop: '1px solid var(--color-soft)' }}>
           <Link to="/"
             className="flex items-center gap-2 text-xs transition-colors hover:opacity-80"
             style={{ color: 'var(--color-muted)' }}>
@@ -136,9 +148,10 @@ export default function AdminDashboard() {
       {/* ── MAIN — pb-24 on mobile so content clears the fixed bottom nav ── */}
       <main className="flex-1 p-6 max-w-5xl pb-24 lg:pb-6">
 
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
-            <h1 className="text-2xl font-semibold"
+            <Eyebrow>Admin Overview</Eyebrow>
+            <h1 className="text-2xl font-semibold mt-2"
                 style={{ fontFamily: 'var(--font-serif)', color: 'var(--color-dark)' }}>
               Dashboard
             </h1>
@@ -147,62 +160,54 @@ export default function AdminDashboard() {
             </p>
           </div>
           <Link to="/admin/products/add"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full text-white
-                       text-sm font-medium transition-all hover:opacity-90"
-            style={{ backgroundColor: 'var(--color-primary)' }}>
+            className="flex items-center gap-2 px-6 py-3 text-white
+                       text-xs font-medium uppercase tracking-wider transition-all hover:opacity-90"
+            style={{ backgroundColor: 'var(--color-dark)' }}>
             <FiPlus size={15} /> Add Product
           </Link>
         </div>
 
         {/* ── STAT CARDS ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8" 
-        style={{
-    backgroundColor: 'var(--color-soft)',  
-    boxShadow: 'var(--shadow-card)',
-  }}  >
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-px mb-8" style={{ backgroundColor: 'var(--color-soft)' }}>
           {loading ? (
             [...Array(4)].map((_, i) => <SkeletonCard key={i} />)
           ) : (
             <>
               <StatCard
-                icon={<FiShoppingCart size={20} />} label="Total Orders"
+                icon={<FiShoppingCart size={19} />} label="Total Orders"
                 value={stats.totalOrders} sub="All time orders"
-                color="#7C6A5E" to="/admin/orders"
+                to="/admin/orders"
               />
               <StatCard
-                icon={<FiTrendingUp size={20} />} label="Revenue"
+                icon={<FiTrendingUp size={19} />} label="Revenue"
                 value={`₹${(stats.totalRevenue || 0).toLocaleString('en-IN')}`}
                 sub="From delivered orders only"
-                color="#D4AF8C" to="/admin/orders"
+                to="/admin/orders"
               />
               <StatCard
-                icon={<FiClock size={20} />} label="Pending"
+                icon={<FiClock size={19} />} label="Pending"
                 value={stats.pendingOrders} sub="Need attention"
-                color="#F59E0B" to="/admin/orders"
+                to="/admin/orders"
               />
               <StatCard
-                icon={<FiPackage size={20} />} label="Products"
+                icon={<FiPackage size={19} />} label="Products"
                 value={stats.totalProducts || '—'} sub="In catalogue"
-                color="#7C3AED" to="/admin/products"
+                to="/admin/products"
               />
             </>
           )}
         </div>
 
         {/* ── RECENT ORDERS + QUICK ACTIONS ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{
-    backgroundColor: 'var(--color-soft)',  
-    boxShadow: 'var(--shadow-card)',
-  }}>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
           {/* Recent Orders */}
-          <div className="lg:col-span-2 bg-white rounded-2xl overflow-hidden"
-               >
+          <div className="lg:col-span-2 bg-white overflow-hidden" style={{ boxShadow: 'var(--shadow-card)', borderTop: '2px solid var(--color-accent)' }}>
             <div className="flex items-center justify-between px-5 py-4"
                  style={{ borderBottom: '1px solid var(--color-soft)' }}>
-              <h2 className="text-sm font-semibold" style={{ color: 'var(--color-dark)' }}>
+              <p className="text-[11px] font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-dark)' }}>
                 Recent Orders
-              </h2>
+              </p>
               <Link to="/admin/orders"
                     className="text-xs flex items-center gap-1 hover:gap-2 transition-all"
                     style={{ color: 'var(--color-primary)' }}>
@@ -214,7 +219,7 @@ export default function AdminDashboard() {
               <div className="p-5 space-y-4">
                 {[...Array(4)].map((_, i) => (
                   <div key={i} className="flex gap-4 animate-pulse">
-                    <div className="h-10 w-28 rounded-lg" style={{ backgroundColor: 'var(--color-soft)' }} />
+                    <div className="h-10 w-28" style={{ backgroundColor: 'var(--color-soft)' }} />
                     <div className="flex-1 space-y-2">
                       <div className="h-3 w-32 rounded-full" style={{ backgroundColor: 'var(--color-soft)' }} />
                       <div className="h-3 w-20 rounded-full" style={{ backgroundColor: 'var(--color-soft)' }} />
@@ -224,7 +229,10 @@ export default function AdminDashboard() {
               </div>
             ) : stats.recentOrders.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-14 text-center px-5">
-                <FiAlertCircle size={32} style={{ color: 'var(--color-muted)' }} className="mb-3" />
+                <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                     style={{ border: '1px solid var(--color-accent)' }}>
+                  <FiAlertCircle size={26} style={{ color: 'var(--color-accent)' }} />
+                </div>
                 <p className="text-sm font-medium mb-1" style={{ color: 'var(--color-dark)' }}>
                   No orders yet
                 </p>
@@ -261,28 +269,24 @@ export default function AdminDashboard() {
           </div>
 
           {/* Quick Actions */}
-          <div className="flex flex-col gap-4" style={{
-    backgroundColor: 'var(--color-soft)',  
-    boxShadow: 'var(--shadow-card)',
-  }}>
-            <div className="bg-white rounded-2xl p-5" style={{ boxShadow: 'var(--shadow-card)' }}>
-              <h2 className="text-sm font-semibold mb-4" style={{ color: 'var(--color-dark)' }}>
+          <div className="flex flex-col gap-6">
+            <div className="bg-white p-5" style={{ boxShadow: 'var(--shadow-card)' }}>
+              <p className="text-[11px] font-medium uppercase tracking-[0.2em] mb-5" style={{ color: 'var(--color-dark)' }}>
                 Quick Actions
-              </h2>
-              <div className="space-y-2">
+              </p>
+              <div className="space-y-1">
                 {[
-                  { to: '/admin/products/add', icon: <FiPlus size={15} />,         label: 'Add New Product',  color: 'var(--color-primary)' },
-                  { to: '/admin/products',     icon: <FiBox size={15} />,          label: 'Manage Products',  color: 'var(--color-accent)'  },
-                  { to: '/admin/orders',       icon: <FiShoppingCart size={15} />, label: 'View Orders',      color: '#7C3AED'              },
-                  { to: '/admin/users',        icon: <FiUsers size={15} />,        label: 'Manage Users',     color: '#0EA5E9'              },
-                  { to: '/',                   icon: <FiEye size={15} />,          label: 'View Storefront',  color: '#22C55E'              },
-                ].map(({ to, icon, label, color }) => (
+                  { to: '/admin/products/add', icon: <FiPlus size={15} />,         label: 'Add New Product'  },
+                  { to: '/admin/products',     icon: <FiBox size={15} />,          label: 'Manage Products'  },
+                  { to: '/admin/orders',       icon: <FiShoppingCart size={15} />, label: 'View Orders'      },
+                  { to: '/admin/users',        icon: <FiUsers size={15} />,        label: 'Manage Users'     },
+                  { to: '/',                   icon: <FiEye size={15} />,          label: 'View Storefront'  },
+                ].map(({ to, icon, label }) => (
                   <Link key={to} to={to}
-                    className="flex items-center gap-3 p-3 rounded-xl text-sm
-                               transition-all hover:translate-x-1"
+                    className="group flex items-center gap-3 py-2.5 text-sm transition-all hover:translate-x-1"
                     style={{ color: 'var(--color-dark)' }}>
-                    <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-                         style={{ backgroundColor: color + '18', color }}>
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
+                         style={{ border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}>
                       {icon}
                     </div>
                     {label}
@@ -292,19 +296,21 @@ export default function AdminDashboard() {
             </div>
 
             {/* Tips card */}
-            <div className="rounded-2xl p-5 relative overflow-hidden"
-                 style={{ backgroundColor: 'var(--color-primary)' }}>
-              <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-10 bg-white" />
-              <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full opacity-10 bg-white" />
-              <p className="text-xs font-semibold uppercase tracking-widest text-white/60 mb-2">
-                Pro tip
-              </p>
+            <div className="p-5 relative overflow-hidden" style={{ backgroundColor: 'var(--color-dark)' }}>
+              <div className="absolute -top-6 -right-6 w-20 h-20 rounded-full opacity-[0.06] bg-white" />
+              <div className="absolute -bottom-4 -left-4 w-16 h-16 rounded-full opacity-[0.06] bg-white" />
+              <div className="flex items-center gap-2.5 mb-3 relative z-10">
+                <span style={{ width: '16px', height: '1px', backgroundColor: 'var(--color-accent)' }} />
+                <p className="text-[10px] font-medium uppercase tracking-[0.2em]" style={{ color: 'var(--color-accent)' }}>
+                  Pro tip
+                </p>
+              </div>
               <p className="text-sm text-white font-medium leading-relaxed relative z-10">
                 Add high-quality images to your products to increase conversion by up to 40%.
               </p>
               <Link to="/admin/products/add"
-                    className="inline-flex items-center gap-1 mt-3 text-xs font-medium
-                               text-white/80 hover:text-white transition-colors">
+                    className="inline-flex items-center gap-1 mt-3 text-xs font-medium relative z-10 transition-colors"
+                    style={{ color: 'var(--color-accent)' }}>
                 Add product <FiArrowRight size={11} />
               </Link>
             </div>
